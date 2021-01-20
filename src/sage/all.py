@@ -216,6 +216,8 @@ from sage.knots.all import *
 
 from sage.manifolds.all import *
 
+from sage.ddg.all   import *
+
 from cysignals.alarm import alarm, cancel_alarm
 
 # Lazily import notebook functions and interacts (#15335)
