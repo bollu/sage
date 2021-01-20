@@ -2,7 +2,7 @@
 # https://geometrycollective.github.io/geometry-processing-js/docs/index.html
 
 
-class Corner(SageObject):
+class Corner:
     def __init__(self, halfedge, index):
         assert isinstance(halfedge, Halfedge)
         self.halfedge = halfedge
@@ -673,7 +673,7 @@ class Geometry:
 #  *
 #  * @module Core
 #  */
-class Halfedge(self):
+class Halfedge:
     def __init__(self, vertex, edge, face, corner, next_, prev, twin, onBoundary, index):
         self.vertex = vertex;
         self.edge = edge;
@@ -1177,7 +1177,7 @@ class Face:
 #    *     // Do something with g
 #    * }
 #    */
-    def adjacentFaces(self, ccw = true):
+    def adjacentFaces(self, ccw = True):
         return FaceFaceIterator(self.halfedge, ccw);
 # 
 #   /**
@@ -1207,7 +1207,7 @@ class Face:
 #    *     // Do something with c
 #    * }
 #    */
-    def adjacentCorners(self, ccw = true):
+    def adjacentCorners(self, ccw = True):
         assert not self.BoundaryLoop()
         return FaceCornerIterator(self.halfedge, ccw);
 # 
@@ -1222,22 +1222,37 @@ class Face:
 #   }
 # }
 
-class FaceVertexIterator:
-    pass
-# 
 # 
 # /**
 #  * This class represents an adjacent vertex iterator for a {@link module:Core.Face Face}.
 #  * @ignore
 #  * @memberof module:Core
 #  */
-# class FaceVertexIterator {
+class FaceVertexIterator:
 #   // constructor
-#   constructor(halfedge, ccw) {
-#       this._halfedge = halfedge;
-#       this._ccw = ccw;
-#   }
-# 
+#    constructor(halfedge, ccw) {
+#        this._halfedge = halfedge;
+#        this._ccw = ccw;
+#    }
+    def __init__(self, halfedge, ccw):
+        self._halfedge = halfedge;
+        self._ccw = ccw;
+        self._current = this._halfedge;
+        self._end = this._halfedge;
+        self._justStared = True
+
+        def __iter__(self):
+            if not self._justStared and self.current == self._halfedge:
+                raise StopIteration
+            else:
+                self._justStared = False
+                if self._ccw:
+                    self.current = self.current.next
+                else:
+                    self.current = self.current.prev
+                v = self.current.vertex
+                return v
+
 #   [Symbol.iterator]() {
 #       return {
 #           current: this._halfedge,
@@ -1264,8 +1279,7 @@ class FaceVertexIterator:
 #   }
 # }
 
-class FaceEdgeIterator:
-    pass
+class FaceEdgeIterator:    
 # /**
 #  * This class represents an adjacent edge iterator for a {@link module:Core.Face Face}.
 #  * @ignore
@@ -1277,7 +1291,24 @@ class FaceEdgeIterator:
 #       this._halfedge = halfedge;
 #       this._ccw = ccw;
 #   }
-# 
+
+    def __init__(self, halfedge, ccw):
+        self._halfedge = halfedge;
+        self._ccw = ccw;
+        self._current = self._halfedge;
+        self._justStared = True;
+
+    def __next__(self):
+        if not this._justStared and this.current == this.enumerate:
+            raise StopIteration
+        else:
+            this._justStared = False
+            e = this.current.edge
+            if self._ccw:
+                self.current = self._current.next
+            else:
+                self.current = self._current.prev
+            return e
 #   [Symbol.iterator]() {
 #       return {
 #           current: this._halfedge,
@@ -1322,7 +1353,13 @@ class FaceFaceIterator:
 #       this._halfedge = halfedge;
 #       this._ccw = ccw;
 #   }
-# 
+    def __init__(self, halfedge, ccw):
+        self._halfedge = halfedge;
+        self._ccw = ccw;
+        self._current = self._halfedge;
+        self._justStared = True;
+
+
 #   [Symbol.iterator]() {
 #       return {
 #           current: this._halfedge,
@@ -1351,10 +1388,22 @@ class FaceFaceIterator:
 #       }
 #   }
 # }
+    def __next__(self):
+        if not this._justStared and this.current == this.enumerate:
+            raise StopIteration
+        else:
+            while this.current.twin.onBoundary:
+                self.current = self.current.next if self._ccw else self.current.prev
 
-class FaceHalfedgeIterator:
-    pass
-# 
+        if not this._justStared and this.current == this.enumerate:
+            raise StopIteration
+        else:
+            this._justStared = False
+            e = this.current.edge
+            self.current = self.current.next if self._ccw else self.current.prev
+            return f
+
+
 # /**
 #  * This class represents an adjacent halfedge iterator for a {@link module:Core.Face Face}.
 #  * @ignore
@@ -1366,6 +1415,14 @@ class FaceHalfedgeIterator:
 #       this._halfedge = halfedge;
 #       this._ccw = ccw;
 #   }
+# 
+class FaceHalfedgeIterator:
+    def __init__(self, halfedge, ccw):
+        self._halfedge = halfedge;
+        self._ccw = ccw;
+        self._current = self._halfedge;
+        self._justStared = True;
+
 # 
 #   [Symbol.iterator]() {
 #       return {
@@ -1394,21 +1451,32 @@ class FaceHalfedgeIterator:
 # }
 
 
-class FaceCornerIterator:
-    pass
-# 
+    def __next__(self):
+        if not this._justStared and this.current == this.end:
+            raise StopIteration
+        else:
+            this._justStared = False
+            h = this.current
+            self.current = self.current.next if self._ccw else self.current.prev
+            return h
+
 # /**
 #  * This class represents an adjacent corner iterator for a {@link module:Core.Face Face}.
 #  * @ignore
 #  * @memberof module:Core
 #  */
-# class FaceCornerIterator {
+class FaceCornerIterator:
 #   // constructor
 #   constructor(halfedge, ccw) {
 #       this._halfedge = halfedge;
 #       this._ccw = ccw;
 #   }
-# 
+    def __init__(self, halfedge, ccw):
+        self._halfedge = halfedge;
+        self._ccw = ccw;
+        self._current = self._halfedge;
+        self._justStared = True;
+
 #   [Symbol.iterator]() {
 #       return {
 #           current: this._halfedge,
@@ -1434,6 +1502,15 @@ class FaceCornerIterator:
 #       }
 #   }
 # }
+    def __next__(self):
+        if not this._justStared and this.current == this.end:
+            raise StopIteration
+        else:
+            this._justStared = False
+            c = this.current.corner # corner will be undefined if face is boundary loop
+            self.current = self.current.next if self._ccw else self.current.prev
+            return c
+
 
 class Vertex:
 #     /**
@@ -1561,7 +1638,14 @@ class Vertex:
 #         this._halfedge = halfedge;
 #         this._ccw = ccw;
 #     }
-# 
+class VertexVertexIterator:
+    def __init__(self, halfedge, ccw):
+        self.halfedge = halfedge;
+        self.ccw = ccw
+        self.current = self.halfedge
+        self.justStared = True
+
+
 #     [Symbol.iterator]() {
 #         return {
 #             current: this._halfedge,
@@ -1587,6 +1671,15 @@ class Vertex:
 #         }
 #     }
 # }
+    def __iter__(self):
+        if not self.justStarted and self.current == self.halfedge:
+            return StopIteration
+        else:
+            self.justStarted = False;
+            v = self.current.twin.vertex
+            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
+            return v
+
 # 
 # /**
 #  * This class represents an adjacent edge iterator for a {@link module:Core.Vertex Vertex}.
@@ -1599,7 +1692,13 @@ class Vertex:
 #         this._halfedge = halfedge;
 #         this._ccw = ccw;
 #     }
-# 
+class VertexEdgeIterator:
+    def __init__(self, halfedge, ccw):
+        self.halfedge = halfedge;
+        self.ccw = ccw
+        self.current = self.halfedge
+        self.justStared = True
+
 #     [Symbol.iterator]() {
 #         return {
 #             current: this._halfedge,
@@ -1625,13 +1724,21 @@ class Vertex:
 #         }
 #     }
 # }
-# 
+    def __iter__(self):
+        if not self.justStarted and self.current == self.halfedge:
+            return StopIteration
+        else:
+            self.justStarted = False;
+            e = self.current.edge
+            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
+            return e
+
 # /**
 #  * This class represents an adjacent face iterator for a {@link module:Core.Vertex Vertex}.
 #  * @ignore
 #  * @memberof module:Core
 #  */
-# class VertexFaceIterator {
+class VertexFaceIterator:
 #     // constructor
 #     constructor(halfedge, ccw) {
 #         while (halfedge.onBoundary) {
@@ -1640,7 +1747,12 @@ class Vertex:
 #         this._halfedge = halfedge;
 #         this._ccw = ccw;
 #     }
-# 
+    def __init__(self, halfedge, ccw):
+        self.halfedge = halfedge;
+        self.ccw = ccw
+        self.current = self.halfedge
+        self.justStared = True
+
 #     [Symbol.iterator]() {
 #         return {
 #             current: this._halfedge,
@@ -1670,18 +1782,35 @@ class Vertex:
 #     }
 # }
 # 
+    def __iter__(self):
+        while self.current.onBoundary:
+            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
+
+        if not self.justStarted and self.current == self.halfedge:
+            return StopIteration
+        else:
+            self.justStarted = False;
+            e = self.current.edge
+            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
+            return e
+
 # /**
 #  * This class represents an adjacent halfedge iterator for a {@link module:Core.Vertex Vertex}.
 #  * @ignore
 #  * @memberof module:Core
 #  */
-# class VertexHalfedgeIterator {
+class VertexHalfedgeIterator:
 #     // constructor
 #     constructor(halfedge, ccw) {
 #         this._halfedge = halfedge;
 #         this._ccw = ccw;
 #     }
-# 
+    def __init__(self, halfedge, ccw):
+        self.halfedge = halfedge;
+        self.ccw = ccw
+        self.current = self.halfedge
+        self.justStared = True
+
 #     [Symbol.iterator]() {
 #         return {
 #             current: this._halfedge,
@@ -1707,13 +1836,22 @@ class Vertex:
 #         }
 #     }
 # }
+    def __iter__(self):
+        if not self.justStarted and self.current == self.halfedge:
+            return StopIteration
+        else:
+            self.justStarted = False;
+            h = self.current
+            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
+            return h
+
 # 
 # /**
 #  * This class represents an adjacent corner iterator for a {@link module:Core.Vertex Vertex}.
 #  * @ignore
 #  * @memberof module:Core
 #  */
-# class VertexCornerIterator {
+class VertexCornerIterator:
 #     // constructor
 #     constructor(halfedge, ccw) {
 #         while (halfedge.onBoundary) {
@@ -1722,7 +1860,12 @@ class Vertex:
 #         this._halfedge = halfedge;
 #         this._ccw = ccw;
 #     }
-# 
+    def __init__(self, halfedge, ccw):
+        self.halfedge = halfedge;
+        self.ccw = ccw
+        self.current = self.halfedge
+        self.justStared = True
+
 #     [Symbol.iterator]() {
 #         return {
 #             current: this._halfedge,
@@ -1751,6 +1894,18 @@ class Vertex:
 #         }
 #     }
 # }
+    def __iter__(self):
+        while self.current.onBoundary:
+            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
+
+        if not self.justStarted and self.current == self.halfedge:
+            return StopIteration
+        else:
+            self.justStarted = False;
+            c = self.current.next.corner;
+            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
+            return c
+
 
 class HeatMethod:
 #   /**
