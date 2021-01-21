@@ -1,2 +1,3 @@
-from .halfedge_mesh import Mesh, Edge, Vertex, Corner
+from .halfedge_mesh import *
+from .bunny import bunny
 

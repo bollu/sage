@@ -1,6 +1,8 @@
 
 # https://geometrycollective.github.io/geometry-processing-js/docs/index.html
 
+from sage.rings.all import RDF
+from sage.plot.plot3d.index_face_set import IndexFaceSet
 
 class Corner:
     def __init__(self, halfedge, index):
@@ -735,14 +737,14 @@ class Mesh:
      # @property {Array.<module:Core.Halfedge[]>} generators An array of halfedge arrays, i.e.,
      # [[h11, h21, ..., hn1], [h12, h22, ..., hm2], ...] representing this mesh's
      # {@link https://en.wikipedia.org/wiki/Homology_(mathematics)#Surfaces homology generators}.
-    def __init__():
-        this.vertices = [];
-        this.edges = [];
-        this.faces = [];
-        this.corners = [];
-        this.halfedges = [];
-        this.boundaries = [];
-        this.generators = [];
+    # def __init__():
+    #     this.vertices = [];
+    #     this.edges = [];
+    #     this.faces = [];
+    #     this.corners = [];
+    #     this.halfedges = [];
+    #     this.boundaries = [];
+    #     this.generators = [];
 # 
 #   /**
 #    * Computes the euler characteristic of this mesh.
@@ -762,10 +764,19 @@ class Mesh:
 #    * (when this mesh contains any one or a combination of the following - non-manifold vertices,
 #    *  non-manifold edges, isolated vertices, isolated faces).
 #    */
-    def build(self, positions, indices):
+    def __init__(self, polysoup):
+        assert isinstance(polysoup, PolygonSoup)
+        this.vertices = [];
+        this.edges = [];
+        this.faces = [];
+        this.corners = [];
+        this.halfedges = [];
+        this.boundaries = [];
+        this.generators = [];
+
         # preallocate elements
-        # positions = polygonSoup["v"];
-        # indices = polygonSoup["f"];
+        positions = polygonSoup.vertex_positions
+        indices = polygonSoup.face_vertex_indices
         # this.preallocateElements(positions, indices);
   
         # create and insert vertices
@@ -935,59 +946,43 @@ class Mesh:
         this.indexElements();
   
   
-#   /**
-#    * Preallocates mesh elements.
-#    * @private
-#    * @method module:Core.Mesh#preallocateElements
-#    * @param {module:LinearAlgebra.Vector[]} positions The vertex positions of a polygon soup mesh.
-#    * @param {number[]} indices The indices of a polygon soup mesh.
-#    */
-#   preallocateElements(positions, indices) {
-#       nBoundaryHalfedges = 0;
-#       sortedEdges = Map();
-#       for (I = 0; I < indices.length; I += 3) {
-#           for (J = 0; J < 3; J++) {
-#               K = (J + 1) % 3;
-#               i = indices[I + J];
-#               j = indices[I + K];
-# 
-#               // swap if i > j
-#               if (i > j) j = [i, i = j][0];
-# 
-#               value = [i, j]
-#               key = value.toString();
-#               if (sortedEdges.has(key)) {
-#                   nBoundaryHalfedges--;
-# 
-#               } else {
-#                   sortedEdges.set(key, value);
-#                   nBoundaryHalfedges++;
-#               }
-#           }
-#       }
-# 
-#       nVertices = positions.length;
-#       nEdges = sortedEdges.size;
-#       nFaces = indices.length / 3;
-#       nHalfedges = 2 * nEdges;
-#       nInteriorHalfedges = nHalfedges - nBoundaryHalfedges;
-# 
-#       // clear arrays
-#       this.vertices.length = 0;
-#       this.edges.length = 0;
-#       this.faces.length = 0;
-#       this.halfedges.length = 0;
-#       this.corners.length = 0;
-#       this.boundaries.length = 0;
-#       this.generators.length = 0;
-# 
-#       // allocate space
-#       this.vertices = Array(nVertices);
-#       this.edges = Array(nEdges);
-#       this.faces = Array(nFaces);
-#       this.halfedges = Array(nHalfedges);
-#       this.corners = Array(nInteriorHalfedges);
-#   }
+    # /**
+    #  * Preallocates mesh elements.
+    #  * @private
+    #  * @method module:Core.Mesh#preallocateElements
+    #  * @param {module:LinearAlgebra.Vector[]} positions The vertex positions of a polygon soup mesh.
+    #  * @param {number[]} indices The indices of a polygon soup mesh.
+    #  */
+    def preallocateElements(self, positions, indices):
+        nBoundaryHalfedges = 0;
+        sortedEdges = set()
+        for I in range(0, len(indices, 3)):
+            for J in range(3):
+                K = (J + 1) % 3;
+                i = indices[I + J]
+                j = indices[I + K]
+  
+                # swap if i > j
+                if (i > j): (i, j) = (j, i)
+
+                value = (i, j)
+                if value in sortedEdges:
+                    nBoundaryHalfedges -= 1;
+                else:
+                    sortedEdges.insert(value)
+                    nBoundaryHalfedges += 1;
+        nVertices = positions.length;
+        nEdges = sortedEdges.size;
+        nFaces = indices.length / 3;
+        nHalfedges = 2 * nEdges;
+        nInteriorHalfedges = nHalfedges - nBoundaryHalfedges;
+   
+        # allocate space
+        # this.vertices = Array(nVertices);
+        # this.edges = Array(nEdges);
+        # this.faces = Array(nFaces);
+        # this.halfedges = Array(nHalfedges);
+        # this.corners = Array(nInteriorHalfedges);
 # 
 #   /**
 #    * Checks whether this mesh has isolated vertices.
@@ -2024,11 +2019,110 @@ class HeatMethod:
 
         return phi;
 
-def parse_obj_data(data):
-    raise RuntimeError("don't know how to parse!")
+
+class PolygonSoup:
+    def __init__(self, vertex_positions, face_vertex_indices):
+        self.vertex_positions = vertex_positions
+        self.face_vertex_indices = face_vertex_indices
+        assert len(self.face_vertex_indices) % 3 == 0, "face must be comprised of triangles"
+        for (i, vi) in enumerate(face_vertex_indices):
+            assert vi >= 0, "Error at index %d: face must index vertex in range" % (i, )
+            assert vi < len(self.vertex_positions), "Error at index %d: face must index vertex in range" % (i, )
+    def __repr__(self):
+        return "PolygonSoup object with %d vertices and %d faces" % (len(self.vertex_positions), len(self.face_vertex_indices) // 3)
+
+    def plot3d(self):
+        fs = []
+        # chunk the face_vertex_indices into groups of 3
+        for fix in range(0, len(self.face_vertex_indices), 3):
+            fs.append(self.face_vertex_indices[fix:fix+3])
+
+        # return the SAGE class that represents a 3d model
+        # TODO: figure out how to get this to work directly in the jupyter
+        # notebook when calling 
+        return IndexFaceSet(fs, self.vertex_positions)
+
+class MeshIO:
+    # /**
+    #  * Converts text from an OBJ file to a polygon soup mesh.
+    #  * @static
+    #  * @param {string} input The text from an OBJ file containing vertex positions
+    #  * and indices.
+    #  * @returns {Object} A polygon soup mesh containing vertex positions and indices.
+    #  * Vertex positions and indices are keyed by "v" and "f" respectively.
+    # Reference: https://en.wikipedia.org/wiki/Wavefront_.obj_file
+    #  */
+    @classmethod
+    def readOBJ(cls, rawstr):
+        positions = []
+        indices = []
+
+        for (linum, line) in enumerate(rawstr.split("\n")):
+            line = line.strip();
+            tokens = line.split(" ");
+            identifier = tokens[0].strip();
+
+            # v x y z
+            if identifier == "v":
+                assert len(tokens) == 4, "expected 3 coordinates for a vertex at line %s" % (1+linum, )
+                positions.append((float(tokens[1]), float(tokens[2]), float(tokens[3])));
+            elif identifier == "f":
+                if len(tokens) > 4:
+                    raise RuntimeError("Line #%d: Only triangle meshes are supported at this time!" % (1+linum));
+                # f v1 v2 v3 ... : a face with vertices { vi }
+                # f v1/vt1 v2/vt2 v3/vt3 ...  : a face with vertex indexes { vi }
+                #  and texture indexes { vti }. We don't care about texture
+                # indexes.
+                for i in range(1, len(tokens)):
+                    index = (tokens[i].split("/")[0]).strip();
+                    indices.append(int(index) - 1);
+        return PolygonSoup(positions, indices)
+
+    # /**
+    #  * Converts a polygon soup mesh to the OBJ file format.
+    #  * @static
+    #  * @param {Object} polygonSoup A polygon soup mesh containing vertex positions
+    #  * and indices. Texture coordinates and normals are optional.
+    #  * @param {module:LinearAlgebra.Vector[]} polygonSoup.v The vertex positions of the polygon soup mesh.
+    #  * @param {module:LinearAlgebra.Vector[]} polygonSoup.vt The texture coordinates of the polygon soup mesh.
+    #  * @param {module:LinearAlgebra.Vector[]} polygonSoup.vn The normals of the polygon soup mesh.
+    #  * @param {number[]} polygonSoup.f The indices of the polygon soup mesh.
+    #  * @returns {string} Text containing vertex positions, texture coordinates, normals
+    #  * and indices in the OBJ format.
+    #  */
+    @classmethod
+    def writeOBJ(cls, polygonSoup):
+        output = ""
+        # write positions
+        positions = polygonSoup.vertex_positions
+
+        # TODO: add code for normals and textures.
+        # let uvs = polygonSoup["vt"];
+        # let normals = polygonSoup["vn"];
+        # for (let i = 0; i < positions.length / 3; i++) {
+        #   output += "v " + positions[3 * i + 0] + " " + positions[3 * i + 1] + " " + positions[3 * i + 2] + "\n";
+        #   if (uvs) output += "vt " + uvs[3 * i + 0] + " " + uvs[3 * i + 1] + "\n";
+        #   if (normals) output += "vn " + normals[3 * i + 0] + " " + normals[3 * i + 1] + " " + normals[3 * i + 2] + "\n";
+        # }
+
+        # write indices
+        indices = polygonSoup.face_vertex_indices
+        for i in range(0, indices.length, 3):
+            output += "f ";
+            for j in range(3):
+                index = indices[i + j] + 1;
+                output += str(index);
+                # if (uvs) output += "/" + index;
+                # if (!uvs && normals) output += "/";
+                # if (normals) output += "/" + index;
+                output += " ";
+            output += "\n";
+        return output;
 
 def test_halfedge_mesh():
-    import sage.ddg.bunny as bunny
-    bunnymesh = parse_obj_data(bunny.bunny)
+    import bunny as bunny
+    polysoup = MeshIO.readOBJ(bunny.bunny)
+    print(polysoup)
+    mesh = Mesh.build(polysoup)
     # now that we have the mesh, run geodesics
     # https://raw.githubusercontent.com/GeometryCollective/geometry-processing-js/master/projects/geodesic-distance/index.html
