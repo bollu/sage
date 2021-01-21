@@ -3,6 +3,7 @@
 
 from sage.rings.all import RDF
 from sage.plot.plot3d.index_face_set import IndexFaceSet
+from collections import defaultdict
 
 class Corner:
     def __init__(self, halfedge, index):
@@ -18,8 +19,8 @@ class Corner:
 #      * @property {module:Core.Halfedge} halfedge The halfedge opposite to this corner.
 #      */
 #     constructor() {
-#         this.halfedge = undefined;
-#         this.index = -1; // an ID between 0 and |C| - 1, where |C| is the number of corners in a mesh
+#         self.halfedge = undefined;
+#         self.index = -1; // an ID between 0 and |C| - 1, where |C| is the number of corners in a mesh
 #     }
 # 
 #     /**
@@ -28,7 +29,7 @@ class Corner:
 #      * @type {module:Core.Vertex}
 #      */
 #     get vertex() {
-#         return this.halfedge.prev.vertex;
+#         return self.halfedge.prev.vertex;
 #     }
 # 
 #     /**
@@ -37,7 +38,7 @@ class Corner:
 #      * @type {module:Core.Face}
 #      */
 #     get face() {
-#         return this.halfedge.face;
+#         return self.halfedge.face;
 #     }
 # 
 #     /**
@@ -46,7 +47,7 @@ class Corner:
 #      * @type {module:Core.Corner}
 #      */
 #     get next() {
-#         return this.halfedge.next.corner;
+#         return self.halfedge.next.corner;
 #     }
 # 
 #     /**
@@ -55,7 +56,7 @@ class Corner:
 #      * @type {module:Core.Corner}
 #      */
 #     get prev() {
-#         return this.halfedge.prev.corner;
+#         return self.halfedge.prev.corner;
 #     }
 # 
 #     /**
@@ -65,7 +66,7 @@ class Corner:
 #      * @returns {string}
 #      */
 #     toString() {
-#         return this.index;
+#         return self.index;
 #     }
 # }
 
@@ -80,8 +81,8 @@ class Edge:
 #    * @property {module:Core.Halfedge} halfedge One of the halfedges associated with this edge.
 #    */
 #   constructor() {
-#       this.halfedge = undefined;
-#       this.index = -1; // an ID between 0 and |E| - 1, where |E| is the number of edges in a mesh
+#       self.halfedge = undefined;
+#       self.index = -1; // an ID between 0 and |E| - 1, where |E| is the number of edges in a mesh
 #   }
 # 
 #   /**
@@ -90,11 +91,11 @@ class Edge:
 #    * @returns {boolean}
 #    */
 #   onBoundary() {
-#       return (this.halfedge.onBoundary || this.halfedge.twin.onBoundary);
+#       return (self.halfedge.onBoundary || self.halfedge.twin.onBoundary);
 #   }
     @property
     def onBoundary(self):
-        return this.halfedge.onBoundary or this.halfedge.twin.onBoundary
+        return self.halfedge.onBoundary or self.halfedge.twin.onBoundary
 # 
 #   /**
 #    * Defines a string representation for this edge as its index.
@@ -103,7 +104,7 @@ class Edge:
 #    * @returns {string}
 #    */
 #   toString() {
-#       return this.index;
+#       return self.index;
 #   }
 # }
 
@@ -140,8 +141,8 @@ class Geometry:
 #    * @returns {module:LinearAlgebra.Vector}
 #    */
     def vector(self, h):
-        a = this.positions[h.vertex];
-        b = this.positions[h.next.vertex];
+        a = self.positions[h.vertex];
+        b = self.positions[h.next.vertex];
         return b - a;
 #   }
 # 
@@ -152,7 +153,7 @@ class Geometry:
 #    * @returns {number}
 #    */
     def length(self, e):
-        return this.vector(e.halfedge).norm();
+        return self.vector(e.halfedge).norm();
 # 
 #   /**
 #    * Computes the midpoint of an edge.
@@ -162,8 +163,8 @@ class Geometry:
 #    */
     def midpoint(self, e):
         h = e.halfedge;
-        a = this.positions[h.vertex];
-        b = this.positions[h.twin.vertex];
+        a = self.positions[h.vertex];
+        b = self.positions[h.twin.vertex];
   
         # return (a.plus(b)).over(2);
         return (a + b) * 0.5
@@ -174,11 +175,11 @@ class Geometry:
 #    * @returns {number}
 #    */
     def meanEdgeLength(self):
-        return sum([this.length(e) for e in edges] / float(len(this.edges)))
+        return sum([self.length(e) for e in edges] / float(len(self.edges)))
         # sum = 0;
-        # edges = this.mesh.edges;
+        # edges = self.mesh.edges;
         # for (e of edges) {
-        #   sum += this.length(e);
+        #   sum += self.length(e);
         # }
     
         # return sum / edges.length;
@@ -191,8 +192,8 @@ class Geometry:
 #    */
     def area(f):
         if (f.isBoundaryLoop()): return 0.0;
-        u = this.vector(f.halfedge);
-        v = this.vector(f.halfedge.prev).negated();
+        u = self.vector(f.halfedge);
+        v = self.vector(f.halfedge.prev).negated();
         return 0.5 * u.cross(v).norm();
 # 
 #   /**
@@ -203,8 +204,8 @@ class Geometry:
     def totalArea(self):
         return sum([self.area(f) for f in self.mesh.faces])
         # sum = 0.0;
-        # for (f of this.mesh.faces) {
-        #   sum += this.area(f);
+        # for (f of self.mesh.faces) {
+        #   sum += self.area(f);
         # }
   
         # return sum;
@@ -219,9 +220,9 @@ class Geometry:
         assert not f.isBoundaryLoop()
         # if (f.isBoundaryLoop()) return undefined;
   
-        u = this.vector(f.halfedge);
+        u = self.vector(f.halfedge);
         # TODO Sid: negated?! why?
-        v = this.vector(f.halfedge.prev).negated();
+        v = self.vector(f.halfedge.prev).negated();
   
         return u.cross(v).unit();
 # 
@@ -233,9 +234,9 @@ class Geometry:
 #    */
     def centroid(self, f):
         h = f.halfedge;
-        a = this.positions[h.vertex];
-        b = this.positions[h.next.vertex];
-        c = this.positions[h.prev.vertex];
+        a = self.positions[h.vertex];
+        b = self.positions[h.next.vertex];
+        c = self.positions[h.prev.vertex];
   
         # TODO: what does it mean to be a boundary loop, formally?
         if (f.isBoundaryLoop()):
@@ -251,9 +252,9 @@ class Geometry:
 #    */
     def circumcenter(self, f):
         h = f.halfedge;
-        a = this.positions[h.vertex];
-        b = this.positions[h.next.vertex];
-        c = this.positions[h.prev.vertex];
+        a = self.positions[h.vertex];
+        b = self.positions[h.next.vertex];
+        c = self.positions[h.prev.vertex];
   
         # TODO: Sid: what does it mean to be a boundary loop?
         if (f.isBoundaryLoop()):
@@ -283,8 +284,8 @@ class Geometry:
         # find e2 by finding the unique vector perpendicular to both
         # e1 and normal.
         # Note that this works in 3D due to the existence of the cross product.
-        e1 = this.vector(f.halfedge).unit();
-        normal = this.faceNormal(f);
+        e1 = self.vector(f.halfedge).unit();
+        normal = self.faceNormal(f);
 
         # guaranteed to have unit magnitude:
         # |e1 x normal| = |e1| x |normal| = 1x1 = 1
@@ -299,8 +300,8 @@ class Geometry:
 #    * @returns {number} The angle clamped between 0 and π.
 #    */
     def angle(self, c):
-        u = this.vector(c.halfedge.prev).unit();
-        v = this.vector(c.halfedge.next).negated().unit();
+        u = self.vector(c.halfedge.prev).unit();
+        v = self.vector(c.halfedge.next).negated().unit();
   
         return Math.acos(Math.max(-1.0, Math.min(1.0, u.dot(v))));
 # 
@@ -314,8 +315,8 @@ class Geometry:
         if (h.onBoundary):
             return 0.0;
 
-        u = this.vector(h.prev);
-        v = this.vector(h.next).negated();
+        u = self.vector(h.prev);
+        v = self.vector(h.next).negated();
   
         # TODO: write a succinct derivation.
         return u.dot(v) / u.cross(v).norm();
@@ -331,9 +332,9 @@ class Geometry:
         if (h.onBoundary or h.twin.onBoundary):
             return 0.0;
   
-        n1 = this.faceNormal(h.face);
-        n2 = this.faceNormal(h.twin.face);
-        w = this.vector(h).unit();
+        n1 = self.faceNormal(h.face);
+        n2 = self.faceNormal(h.twin.face);
+        w = self.vector(h).unit();
   
         cosTheta = n1.dot(n2);
         sinTheta = n1.cross(n2).dot(w);
@@ -351,7 +352,7 @@ class Geometry:
     def barycentricDualArea(self, v):
         area = 0.0;
         for f in v.adjacentFaces():
-            area += this.area(f) / 3;
+            area += self.area(f) / 3;
         return area;
 # 
 #   /**
@@ -365,10 +366,10 @@ class Geometry:
     def circumcentricDualArea(self, v):
         area = 0.0;
         for h in v.adjacentHalfedges():
-            u2 = this.vector(h.prev).norm2();
-            v2 = this.vector(h).norm2();
-            cotAlpha = this.cotan(h.prev);
-            cotBeta = this.cotan(h);
+            u2 = self.vector(h.prev).norm2();
+            v2 = self.vector(h).norm2();
+            cotAlpha = self.cotan(h.prev);
+            cotBeta = self.cotan(h);
     
             area += (u2 * cotAlpha + v2 * cotBeta) / 8;
     
@@ -384,7 +385,7 @@ class Geometry:
     def vertexNormalEquallyWeighted(self, v):
         n = Vector();
         for f in v.adjacentFaces():
-            normal = this.faceNormal(f);
+            normal = self.faceNormal(f);
             n.incrementBy(normal);
         n.normalize();    
         return n;
@@ -398,8 +399,8 @@ class Geometry:
     def vertexNormalAreaWeighted(self, v):
         n = Vector();
         for f in v.adjacentFaces():
-            normal = this.faceNormal(f);
-            area = this.area(f);
+            normal = self.faceNormal(f);
+            area = self.area(f);
   
             n.incrementBy(normal.times(area));
         n.normalize();
@@ -415,8 +416,8 @@ class Geometry:
     def vertexNormalAngleWeighted(self, v):
         n = Vector();
         for c in v.adjacentCorners():
-            normal = this.faceNormal(c.halfedge.face);
-            angle = this.angle(c);
+            normal = self.faceNormal(c.halfedge.face);
+            angle = self.angle(c);
             n.incrementBy(normal.times(angle));
    
         n.normalize();
@@ -432,9 +433,9 @@ class Geometry:
     def vertexNormalGaussCurvature(v):
         n = Vector();
         for h in v.adjacentHalfedges():
-            weight = 0.5 * this.dihedralAngle(h) / this.length(h.edge);
+            weight = 0.5 * self.dihedralAngle(h) / self.length(h.edge);
   
-            n.decrementBy(this.vector(h).times(weight));
+            n.decrementBy(self.vector(h).times(weight));
   
         n.normalize();
         return n;
@@ -448,8 +449,8 @@ class Geometry:
     def vertexNormalMeanCurvature(self, v):
         n = Vector();
         for h in  v.adjacentHalfedges():
-            weight = 0.5 * (this.cotan(h) + this.cotan(h.twin));
-            n.decrementBy(this.vector(h).times(weight));
+            weight = 0.5 * (self.cotan(h) + self.cotan(h.twin));
+            n.decrementBy(self.vector(h).times(weight));
   
         n.normalize();
         return n;
@@ -463,8 +464,8 @@ class Geometry:
     def vertexNormalSphereInscribed(self, v): 
         n = Vector();
         for c in v.adjacentCorners():
-            u = this.vector(c.halfedge.prev);
-            v = this.vector(c.halfedge.next).negated();
+            u = self.vector(c.halfedge.prev);
+            v = self.vector(c.halfedge.next).negated();
    
             n.incrementBy(u.cross(v).over(u.norm2() * v.norm2()));
 
@@ -482,7 +483,7 @@ class Geometry:
     def angleDefect(self, v):
         angleSum = 0.0;
         for c in v.adjacentCorners():
-            angleSum += this.angle(c);
+            angleSum += self.angle(c);
     
 #       return v.onBoundary() ? Math.PI - angleSum : 2 * Math.PI - angleSum;
 #   }
@@ -494,7 +495,7 @@ class Geometry:
 #    * @returns {number}
 #    */
     def scalarGaussCurvature(self, v):
-        return this.angleDefect(v);
+        return self.angleDefect(v);
 # 
 #   /**
 #    * Computes the (integrated) scalar mean curvature at a vertex.
@@ -506,7 +507,7 @@ class Geometry:
     def scalarMeanCurvature(self, v):
         s = 0.0;
         for h in v.adjacentHalfedges():
-            s += 0.5 * this.length(h.edge) * this.dihedralAngle(h);
+            s += 0.5 * self.length(h.edge) * self.dihedralAngle(h);
         return s;
 # 
 #   /**
@@ -517,8 +518,8 @@ class Geometry:
      # TODO: check that this is indeeed 2π times the euler characteristic
     def totalAngleDefect(self):
         totalDefect = 0.0;
-        for v in this.mesh.vertices:
-            totalDefect += this.angleDefect(v);
+        for v in self.mesh.vertices:
+            totalDefect += self.angleDefect(v);
    
         return totalDefect;
    
@@ -530,9 +531,9 @@ class Geometry:
 #   TODO: add explanation for what this is
 #    */
     def principalCurvatures(self, v):
-        A = this.circumcentricDualArea(v);
-        H = this.scalarMeanCurvature(v) / A;
-        K = this.angleDefect(v) / A;
+        A = self.circumcentricDualArea(v);
+        H = self.scalarMeanCurvature(v) / A;
+        K = self.angleDefect(v) / A;
    
         # TODO: why do we clamp the discriminant?
         # This might make it harder to do "symbolic" stuff.
@@ -555,16 +556,16 @@ class Geometry:
 #    TODO: why do we build positive definite operator?
 #    */
     def laplaceMatrix(self, vertexIndex):
-        V = this.mesh.vertices.length;
+        V = self.mesh.vertices.length;
         # TODO: what is Triplet?
         T = Triplet(V, V);
-        for v in this.mesh.vertices:
+        for v in self.mesh.vertices:
             i = vertexIndex[v];
             sum = 1e-8;
     
             for h in v.adjacentHalfedges():
                 j = vertexIndex[h.twin.vertex];
-                weight = (this.cotan(h) + this.cotan(h.twin)) / 2;
+                weight = (self.cotan(h) + self.cotan(h.twin)) / 2;
                 sum += weight;
                 T.addEntry(-weight, i, j);
             T.addEntry(sum, i, i);
@@ -579,11 +580,11 @@ class Geometry:
 #    * @returns {module:LinearAlgebra.SparseMatrix}
 #    */
     def massMatrix(self, vertexIndex):
-        V = this.mesh.vertices.length;
+        V = self.mesh.vertices.length;
         T = Triplet(V, V);
-        for v in this.mesh.vertices:
+        for v in self.mesh.vertices:
             i = vertexIndex[v];
-            T.addEntry(this.barycentricDualArea(v), i, i);
+            T.addEntry(self.barycentricDualArea(v), i, i);
   
         return SparseMatrix.fromTriplet(T);
 # 
@@ -597,15 +598,15 @@ class Geometry:
 #    */
 #    TODO: What is a complex laplace matrix?
     def complexLaplaceMatrix(self, vertexIndex):
-        V = this.mesh.vertices.length;
+        V = self.mesh.vertices.length;
         T = ComplexTriplet(V, V);
-        for v in this.mesh.vertices:
+        for v in self.mesh.vertices:
             i = vertexIndex[v];
             sum = 1e-8;
   
             for h in v.adjacentHalfedges():
                 j = vertexIndex[h.twin.vertex];
-                weight = (this.cotan(h) + this.cotan(h.twin)) / 2;
+                weight = (self.cotan(h) + self.cotan(h.twin)) / 2;
                 sum += weight;  
                 T.addEntry(Complex(-weight), i, j);
             T.addEntry(Complex(sum), i, i);
@@ -676,16 +677,27 @@ class Geometry:
 #  * @module Core
 #  */
 class Halfedge:
-    def __init__(self, vertex, edge, face, corner, next_, prev, twin, onBoundary, index):
-        self.vertex = vertex;
-        self.edge = edge;
-        self.face = face;
-        self.corner = corner;
-        self.next = next_;
-        self.prev = prev;
-        self.twin = twin;
-        self.onBoundary = onBoundary;
-        self.index = index;
+    def __init__(self):
+        self.vertex =     None
+        self.edge =       None
+        self.face =       None
+        self.corner =     None
+        self.next =       None
+        self.prev =       None
+        self.twin =       None
+        self.onBoundary = None
+        self.index =      None
+
+    # def __init__(self, vertex, edge, face, corner, next_, prev, twin, onBoundary, index):
+    #     self.vertex = vertex;
+    #     self.edge = edge;
+    #     self.face = face;
+    #     self.corner = corner;
+    #     self.next = next_;
+    #     self.prev = prev;
+    #     self.twin = twin;
+    #     self.onBoundary = onBoundary;
+    #     self.index = index;
 
 # class Halfedge {
 #   /**
@@ -701,15 +713,15 @@ class Halfedge:
 #    * @property {boolean} onBoundary A flag that indicates whether this halfedge is on a boundary.
 #    */
 #   constructor() {
-#       this.vertex = undefined;
-#       this.edge = undefined;
-#       this.face = undefined;
-#       this.corner = undefined;
-#       this.next = undefined;
-#       this.prev = undefined;
-#       this.twin = undefined;
-#       this.onBoundary = undefined;
-#       this.index = -1; // an ID between 0 and |H| - 1, where |H| is the number of halfedges in a mesh
+#       self.vertex = undefined;
+#       self.edge = undefined;
+#       self.face = undefined;
+#       self.corner = undefined;
+#       self.next = undefined;
+#       self.prev = undefined;
+#       self.twin = undefined;
+#       self.onBoundary = undefined;
+#       self.index = -1; // an ID between 0 and |H| - 1, where |H| is the number of halfedges in a mesh
 #   }
 # 
 #   /**
@@ -719,7 +731,7 @@ class Halfedge:
 #    * @returns {string}
 #    */
 #   toString() {
-#       return this.index;
+#       return self.index;
 #   }
 # }
 
@@ -738,13 +750,13 @@ class Mesh:
      # [[h11, h21, ..., hn1], [h12, h22, ..., hm2], ...] representing this mesh's
      # {@link https://en.wikipedia.org/wiki/Homology_(mathematics)#Surfaces homology generators}.
     # def __init__():
-    #     this.vertices = [];
-    #     this.edges = [];
-    #     this.faces = [];
-    #     this.corners = [];
-    #     this.halfedges = [];
-    #     this.boundaries = [];
-    #     this.generators = [];
+    #     self.vertices = [];
+    #     self.edges = [];
+    #     self.faces = [];
+    #     self.corners = [];
+    #     self.halfedges = [];
+    #     self.boundaries = [];
+    #     self.generators = [];
 # 
 #   /**
 #    * Computes the euler characteristic of this mesh.
@@ -766,18 +778,18 @@ class Mesh:
 #    */
     def __init__(self, polysoup):
         assert isinstance(polysoup, PolygonSoup)
-        this.vertices = [];
-        this.edges = [];
-        this.faces = [];
-        this.corners = [];
-        this.halfedges = [];
-        this.boundaries = [];
-        this.generators = [];
+        self.vertices = [];
+        self.edges = [];
+        self.faces = [];
+        self.corners = [];
+        self.halfedges = [];
+        self.boundaries = [];
+        self.generators = [];
 
         # preallocate elements
-        positions = polygonSoup.vertex_positions
-        indices = polygonSoup.face_vertex_indices
-        # this.preallocateElements(positions, indices);
+        positions = polysoup.vertex_positions
+        indices = polysoup.face_vertex_indices
+        self.preallocateElements(positions, indices);
   
         # create and insert vertices
         self.vertices = [None for _ in positions]
@@ -786,14 +798,14 @@ class Mesh:
   
         # create and insert halfedges, edges and non boundary loop faces
         eIndex = 0;
-        edgeCount = {}
+        edgeCount = defaultdict(int)
         existingHalfedges = {}
-        hasTwinHalfedge = {}
+        hasTwinHalfedge = defaultdict(bool)
         # for (I = 0; I < indices.length; I += 3) {
         for I in range(len(indices), 3):
             # create face
             f = Face();
-            this.faces[I // 3] = f;
+            self.faces[I // 3] = f;
   
             # create a halfedge for each edge of the newly created face
             for J in range(3):
@@ -808,9 +820,9 @@ class Mesh:
                 j = indices[I + K];
   
                 # set the current halfedge's attributes
-                h = this.halfedges[I + J];
-                h.next = this.halfedges[I + K];
-                h.prev = this.halfedges[I + (J + 3 - 1) % 3];
+                h = self.halfedges[I + J];
+                h.next = self.halfedges[I + K];
+                h.prev = self.halfedges[I + (J + 3 - 1) % 3];
                 h.onBoundary = False;
                 hasTwinHalfedge[h] = False;
   
@@ -847,8 +859,8 @@ class Mesh:
                 else:
                     # create an edge and set its halfedge
                     e = Edge();
-                    this.edges.append(e)
-                    #this.edges[eIndex] = e;
+                    self.edges.append(e)
+                    #self.edges[eIndex] = e;
                     # eIndex += 1
                     h.edge = e;
                     e.halfedge = h;
@@ -868,18 +880,18 @@ class Mesh:
 
         # create and insert boundary halfedges and "imaginary" faces for boundary cycles
         # also create and insert corners
+        # WAT?
         hIndex = len(indices);
         cIndex = 0;
         # for (i = 0; i < indices.length; i++) {
         for i in range(len(indices)):
             # if a halfedge has no twin halfedge, create a face and
             # link it the corresponding boundary cycle
-            h = this.halfedges[i];
-
+            h = self.halfedges[i];
             if not hasTwinHalfedge[h]:
                 # create face
                 f = Face();
-                this.boundaries.append(f);
+                self.boundaries.append(f);
   
                 # walk along boundary cycle
                 boundaryCycle = [];
@@ -887,7 +899,7 @@ class Mesh:
                 while True:
                     # create a halfedge
                     bH = Halfedge();
-                    this.halfedges[hIndex] = bH;
+                    self.halfedges[hIndex] = bH;
                     hIndex += 1
                     boundaryCycle.append(bH);
   
@@ -928,22 +940,22 @@ class Mesh:
   
             # ^^^ end not having twin halfedge processing ^^^
             # point the newly created corner and its halfedge to each other
-            if (not h.onBoundary):
+            if not h.onBoundary:
                 c = Corner();
                 c.halfedge = h;
                 h.corner = c;
-                this.corners[cIndex] = c;
+                self.corners[cIndex] = c;
                 cIndex += 1
 
   
         # check if mesh has isolated vertices, isolated faces or
         # non-manifold vertices
-        this.assertHasNoIsolatedVertices()
-        this.assertHasNoIsolatedFaces()
-        this.assertHasOnlyManifoldVertices()
+        self.assertHasNoIsolatedVertices()
+        self.assertHasNoIsolatedFaces()
+        self.assertHasOnlyManifoldVertices()
         
         # index elements
-        this.indexElements();
+        self.indexElements();
   
   
     # /**
@@ -956,7 +968,7 @@ class Mesh:
     def preallocateElements(self, positions, indices):
         nBoundaryHalfedges = 0;
         sortedEdges = set()
-        for I in range(0, len(indices, 3)):
+        for I in range(0, len(indices), 3):
             for J in range(3):
                 K = (J + 1) % 3;
                 i = indices[I + J]
@@ -969,20 +981,21 @@ class Mesh:
                 if value in sortedEdges:
                     nBoundaryHalfedges -= 1;
                 else:
-                    sortedEdges.insert(value)
+                    sortedEdges.add(value)
                     nBoundaryHalfedges += 1;
-        nVertices = positions.length;
-        nEdges = sortedEdges.size;
-        nFaces = indices.length / 3;
+        nVertices = len(positions)
+        nEdges = len(sortedEdges)
+        assert len(indices) % 3 == 0
+        nFaces = len(indices) // 3
         nHalfedges = 2 * nEdges;
         nInteriorHalfedges = nHalfedges - nBoundaryHalfedges;
    
         # allocate space
-        # this.vertices = Array(nVertices);
-        # this.edges = Array(nEdges);
-        # this.faces = Array(nFaces);
-        # this.halfedges = Array(nHalfedges);
-        # this.corners = Array(nInteriorHalfedges);
+        self.vertices =  [None for _ in range(nVertices)] # Array(nVertices);
+        self.edges =     [None for _ in range(nEdges)] # Array(nEdges);
+        self.faces =     [None for _ in range(nFaces)] # Array(nFaces);
+        self.halfedges = [None for _ in range(nHalfedges)] # Array(nHalfedges);
+        self.corners =   [None for _ in range(nInteriorHalfedges)] # Array(nInteriorHalfedges);
 # 
 #   /**
 #    * Checks whether this mesh has isolated vertices.
@@ -1002,7 +1015,7 @@ class Mesh:
 #    * @returns {boolean}
 #    */
     def assertHasNoIsolatedFaces(self):
-        for f in this.faces:
+        for f in self.faces:
             boundaryEdges = 0;
             for h in f.adjacentHalfedges():
                 if (h.twin.onBoundary):
@@ -1019,23 +1032,23 @@ class Mesh:
 #    */
 #   hasNonManifoldVertices() {
 #       adjacentFaces = Map();
-#       for (v of this.vertices) {
+#       for (v of self.vertices) {
 #           adjacentFaces.set(v, 0);
 #       }
 # 
-#       for (f of this.faces) {
+#       for (f of self.faces) {
 #           for (v of f.adjacentVertices()) {
 #               adjacentFaces.set(v, adjacentFaces.get(v) + 1);
 #           }
 #       }
 # 
-#       for (b of this.boundaries) {
+#       for (b of self.boundaries) {
 #           for (v of b.adjacentVertices()) {
 #               adjacentFaces.set(v, adjacentFaces.get(v) + 1);
 #           }
 #       }
 # 
-#       for (v of this.vertices) {
+#       for (v of self.vertices) {
 #           if (adjacentFaces.get(v) !== v.degree()) {
 #               return true;
 #           }
@@ -1049,39 +1062,36 @@ class Mesh:
 #    * @private
 #    * @method module:Core.Mesh#indexElements
 #    */
-#   indexElements() {
-#       index = 0;
-#       for (v of this.vertices) {
-#           v.index = index++;
-#       }
-# 
-#       index = 0;
-#       for (e of this.edges) {
-#           e.index = index++;
-#       }
-# 
-#       index = 0;
-#       for (f of this.faces) {
-#           f.index = index++;
-#       }
-# 
-#       index = 0;
-#       for (h of this.halfedges) {
-#           h.index = index++;
-#       }
-# 
-#       index = 0;
-#       for (c of this.corners) {
-#           c.index = index++;
-#       }
-# 
-#       index = 0;
-#       for (b of this.boundaries) {
-#           b.index = index++;
-#       }
-#   }
-# }
-# 
+    def indexElements(self):
+        index = 0;
+        for v in self.vertices:
+            v.index = index;
+            index += 1
+  
+        index = 0;
+        for e in self.edges:
+            e.index = index;
+            index += 1
+  
+        index = 0;
+        for f in self.faces:
+            f.index = index
+            index += 1
+  
+        index = 0;
+        for h in self.halfedges:
+            h.index = index
+            index += 1 
+  
+        index = 0;
+        for c in self.corners:
+            c.index = index
+            index += 1
+  
+        index = 0;
+        for b in self.boundaries:
+            b.index = index
+            index += 1
 # 
 # /**
 #  * Assigns an index to each element in elementList. Indices can be accessed by using
@@ -1114,13 +1124,17 @@ class Face:
     #  * @constructor module:Core.Face
     #  * @property {module:Core.Halfedge} halfedge One of the halfedges associated with this face.
     #  */
-    def __init__(self, halfedge, index):
-        self.halfedge = halfedge
-        self.index = -1
-        # this.halfedge = undefined;
-        # this.index = -1; // an ID between 0 and |F| - 1 if this face is not a boundary loop
-        # // or an ID between 0 and |B| - 1 if this face is a boundary loop, where |F| is the
-        # // number of faces in the mesh and |B| is the number of boundary loops in the mesh
+    def __init__(self):
+        self.halfedge = None
+        self.index = None
+
+    # def __init__(self, halfedge, index):
+    #     self.halfedge = halfedge
+    #     self.index = -1
+    #     # self.halfedge = undefined;
+    #     # self.index = -1; // an ID between 0 and |F| - 1 if this face is not a boundary loop
+    #     # // or an ID between 0 and |B| - 1 if this face is a boundary loop, where |F| is the
+    #     # // number of faces in the mesh and |B| is the number of boundary loops in the mesh
   
     # /**
     #  * Checks whether this face is a boundary loop.
@@ -1188,7 +1202,7 @@ class Face:
 #    * }
 #    */
     def adjacentHalfedges(self, ccw = True):
-        return FaceHalfedgeIterator(this.halfedge, ccw);
+        return FaceHalfedgeIterator(self.halfedge, ccw);
 # 
 #   /**
 #    * Convenience function to iterate over the corners in this face. Not valid if this face
@@ -1213,7 +1227,7 @@ class Face:
 #    * @returns {string}
 #    */
 #   toString() {
-#       return this.index;
+#       return self.index;
 #   }
 # }
 
@@ -1226,14 +1240,14 @@ class Face:
 class FaceVertexIterator:
 #   // constructor
 #    constructor(halfedge, ccw) {
-#        this._halfedge = halfedge;
-#        this._ccw = ccw;
+#        self._halfedge = halfedge;
+#        self._ccw = ccw;
 #    }
     def __init__(self, halfedge, ccw):
         self._halfedge = halfedge;
         self._ccw = ccw;
-        self._current = this._halfedge;
-        self._end = this._halfedge;
+        self._current = self._halfedge;
+        self._end = self._halfedge;
         self._justStared = True
 
         def __iter__(self):
@@ -1250,20 +1264,20 @@ class FaceVertexIterator:
 
 #   [Symbol.iterator]() {
 #       return {
-#           current: this._halfedge,
-#           end: this._halfedge,
-#           ccw: this._ccw,
+#           current: self._halfedge,
+#           end: self._halfedge,
+#           ccw: self._ccw,
 #           justStarted: true,
 #           next() {
-#               if (!this.justStarted && this.current === this.end) {
+#               if (!self.justStarted && self.current === self.end) {
 #                   return {
 #                       done: true
 #                   };
 # 
 #               } else {
-#                   this.justStarted = false;
-#                   vertex = this.current.vertex;
-#                   this.current = this.ccw ? this.current.next : this.current.prev;
+#                   self.justStarted = false;
+#                   vertex = self.current.vertex;
+#                   self.current = self.ccw ? self.current.next : self.current.prev;
 #                   return {
 #                       done: false,
 #                       value: vertex
@@ -1283,8 +1297,8 @@ class FaceEdgeIterator:
 # class FaceEdgeIterator {
 #   // constructor
 #   constructor(halfedge, ccw) {
-#       this._halfedge = halfedge;
-#       this._ccw = ccw;
+#       self._halfedge = halfedge;
+#       self._ccw = ccw;
 #   }
 
     def __init__(self, halfedge, ccw):
@@ -1294,11 +1308,11 @@ class FaceEdgeIterator:
         self._justStared = True;
 
     def __next__(self):
-        if not this._justStared and this.current == this.enumerate:
+        if not self._justStared and self.current == self.enumerate:
             raise StopIteration
         else:
-            this._justStared = False
-            e = this.current.edge
+            self._justStared = False
+            e = self.current.edge
             if self._ccw:
                 self.current = self._current.next
             else:
@@ -1306,20 +1320,20 @@ class FaceEdgeIterator:
             return e
 #   [Symbol.iterator]() {
 #       return {
-#           current: this._halfedge,
-#           end: this._halfedge,
-#           ccw: this._ccw,
+#           current: self._halfedge,
+#           end: self._halfedge,
+#           ccw: self._ccw,
 #           justStarted: true,
 #           next() {
-#               if (!this.justStarted && this.current === this.end) {
+#               if (!self.justStarted && self.current === self.end) {
 #                   return {
 #                       done: true
 #                   };
 # 
 #               } else {
-#                   this.justStarted = false;
-#                   edge = this.current.edge;
-#                   this.current = this.ccw ? this.current.next : this.current.prev;
+#                   self.justStarted = false;
+#                   edge = self.current.edge;
+#                   self.current = self.ccw ? self.current.next : self.current.prev;
 #                   return {
 #                       done: false,
 #                       value: edge
@@ -1345,8 +1359,8 @@ class FaceFaceIterator:
 #       while (halfedge.twin.onBoundary) {
 #           halfedge = halfedge.next;
 #       } // twin halfedge must not be on the boundary
-#       this._halfedge = halfedge;
-#       this._ccw = ccw;
+#       self._halfedge = halfedge;
+#       self._ccw = ccw;
 #   }
     def __init__(self, halfedge, ccw):
         self._halfedge = halfedge;
@@ -1357,23 +1371,23 @@ class FaceFaceIterator:
 
 #   [Symbol.iterator]() {
 #       return {
-#           current: this._halfedge,
-#           end: this._halfedge,
-#           ccw: this._ccw,
+#           current: self._halfedge,
+#           end: self._halfedge,
+#           ccw: self._ccw,
 #           justStarted: true,
 #           next() {
-#               while (this.current.twin.onBoundary) {
-#                   this.current = this.ccw ? this.current.next : this.current.prev;
+#               while (self.current.twin.onBoundary) {
+#                   self.current = self.ccw ? self.current.next : self.current.prev;
 #               } // twin halfedge must not be on the boundary
-#               if (!this.justStarted && this.current === this.end) {
+#               if (!self.justStarted && self.current === self.end) {
 #                   return {
 #                       done: true
 #                   };
 # 
 #               } else {
-#                   this.justStarted = false;
-#                   face = this.current.twin.face;
-#                   this.current = this.ccw ? this.current.next : this.current.prev;
+#                   self.justStarted = false;
+#                   face = self.current.twin.face;
+#                   self.current = self.ccw ? self.current.next : self.current.prev;
 #                   return {
 #                       done: false,
 #                       value: face
@@ -1384,17 +1398,17 @@ class FaceFaceIterator:
 #   }
 # }
     def __next__(self):
-        if not this._justStared and this.current == this.enumerate:
+        if not self._justStared and self.current == self.enumerate:
             raise StopIteration
         else:
-            while this.current.twin.onBoundary:
+            while self.current.twin.onBoundary:
                 self.current = self.current.next if self._ccw else self.current.prev
 
-        if not this._justStared and this.current == this.enumerate:
+        if not self._justStared and self.current == self.enumerate:
             raise StopIteration
         else:
-            this._justStared = False
-            e = this.current.edge
+            self._justStared = False
+            e = self.current.edge
             self.current = self.current.next if self._ccw else self.current.prev
             return f
 
@@ -1407,8 +1421,8 @@ class FaceFaceIterator:
 # class FaceHalfedgeIterator {
 #   // constructor
 #   constructor(halfedge, ccw) {
-#       this._halfedge = halfedge;
-#       this._ccw = ccw;
+#       self._halfedge = halfedge;
+#       self._ccw = ccw;
 #   }
 # 
 class FaceHalfedgeIterator:
@@ -1421,20 +1435,20 @@ class FaceHalfedgeIterator:
 # 
 #   [Symbol.iterator]() {
 #       return {
-#           current: this._halfedge,
-#           end: this._halfedge,
-#           ccw: this._ccw,
+#           current: self._halfedge,
+#           end: self._halfedge,
+#           ccw: self._ccw,
 #           justStarted: true,
 #           next() {
-#               if (!this.justStarted && this.current === this.end) {
+#               if (!self.justStarted && self.current === self.end) {
 #                   return {
 #                       done: true
 #                   };
 # 
 #               } else {
-#                   this.justStarted = false;
-#                   halfedge = this.current;
-#                   this.current = this.ccw ? this.current.next : this.current.prev;
+#                   self.justStarted = false;
+#                   halfedge = self.current;
+#                   self.current = self.ccw ? self.current.next : self.current.prev;
 #                   return {
 #                       done: false,
 #                       value: halfedge
@@ -1447,11 +1461,11 @@ class FaceHalfedgeIterator:
 
 
     def __next__(self):
-        if not this._justStared and this.current == this.end:
+        if not self._justStared and self.current == self.end:
             raise StopIteration
         else:
-            this._justStared = False
-            h = this.current
+            self._justStared = False
+            h = self.current
             self.current = self.current.next if self._ccw else self.current.prev
             return h
 
@@ -1463,8 +1477,8 @@ class FaceHalfedgeIterator:
 class FaceCornerIterator:
 #   // constructor
 #   constructor(halfedge, ccw) {
-#       this._halfedge = halfedge;
-#       this._ccw = ccw;
+#       self._halfedge = halfedge;
+#       self._ccw = ccw;
 #   }
     def __init__(self, halfedge, ccw):
         self._halfedge = halfedge;
@@ -1474,20 +1488,20 @@ class FaceCornerIterator:
 
 #   [Symbol.iterator]() {
 #       return {
-#           current: this._halfedge,
-#           end: this._halfedge,
-#           ccw: this._ccw,
+#           current: self._halfedge,
+#           end: self._halfedge,
+#           ccw: self._ccw,
 #           justStarted: true,
 #           next() {
-#               if (!this.justStarted && this.current === this.end) {
+#               if (!self.justStarted && self.current === self.end) {
 #                   return {
 #                       done: true
 #                   };
 # 
 #               } else {
-#                   this.justStarted = false;
-#                   this.current = this.ccw ? this.current.next : this.current.prev;
-#                   corner = this.current.corner; // corner will be undefined if this face is a boundary loop
+#                   self.justStarted = false;
+#                   self.current = self.ccw ? self.current.next : self.current.prev;
+#                   corner = self.current.corner; // corner will be undefined if this face is a boundary loop
 #                   return {
 #                       done: false,
 #                       value: corner
@@ -1498,11 +1512,11 @@ class FaceCornerIterator:
 #   }
 # }
     def __next__(self):
-        if not this._justStared and this.current == this.end:
+        if not self._justStared and self.current == self.end:
             raise StopIteration
         else:
-            this._justStared = False
-            c = this.current.corner # corner will be undefined if face is boundary loop
+            self._justStared = False
+            c = self.current.corner # corner will be undefined if face is boundary loop
             self.current = self.current.next if self._ccw else self.current.prev
             return c
 
@@ -1516,7 +1530,7 @@ class Vertex:
     def __init__(self):
         self.halfedge = None
         self.index = -1
-        # this.index = -1; // an ID between 0 and |V| - 1, where |V| is the number of vertices in a mesh
+        # self.index = -1; // an ID between 0 and |V| - 1, where |V| is the number of vertices in a mesh
 # 
 #     /**
 #      * Counts the number of edges adjacent to this vertex.
@@ -1553,7 +1567,7 @@ class Vertex:
 #      * }
 #      */
     def adjacentVertices(self, ccw = True):
-      return VertexVertexIterator(this.halfedge, ccw);
+      return VertexVertexIterator(self.halfedge, ccw);
 # 
 #     /**
 #      * Convenience function to iterate over the edges adjacent to this vertex.
@@ -1567,7 +1581,7 @@ class Vertex:
 #      * }
 #      */
     def adjacentEdges(self, ccw = True):
-        return VertexEdgeIterator(this.halfedge, ccw);
+        return VertexEdgeIterator(self.halfedge, ccw);
 # 
 #     /**
 #      * Convenience function to iterate over the faces adjacent to this vertex.
@@ -1581,7 +1595,7 @@ class Vertex:
 #      * }
 #      */
     def adjacentFaces(self, ccw = True): 
-        return VertexFaceIterator(this.halfedge, ccw);
+        return VertexFaceIterator(self.halfedge, ccw);
 # 
 #     /**
 #      * Convenience function to iterate over the halfedges adjacent to this vertex.
@@ -1609,7 +1623,7 @@ class Vertex:
 #      * }
 #      */
     def adjacentCorners(self, ccw = True):
-        return VertexCornerIterator(this.halfedge, ccw);
+        return VertexCornerIterator(self.halfedge, ccw);
 # 
 #     /**
 #      * Defines a string representation for this vertex as its index.
@@ -1618,7 +1632,7 @@ class Vertex:
 #      * @returns {string}
 #      */
 #     toString() {
-#         return this.index;
+#         return self.index;
 #     }
 # }
 # 
@@ -1630,8 +1644,8 @@ class Vertex:
 # class VertexVertexIterator {
 #     // constructor
 #     constructor(halfedge, ccw) {
-#         this._halfedge = halfedge;
-#         this._ccw = ccw;
+#         self._halfedge = halfedge;
+#         self._ccw = ccw;
 #     }
 class VertexVertexIterator:
     def __init__(self, halfedge, ccw):
@@ -1643,20 +1657,20 @@ class VertexVertexIterator:
 
 #     [Symbol.iterator]() {
 #         return {
-#             current: this._halfedge,
-#             end: this._halfedge,
-#             ccw: this._ccw,
+#             current: self._halfedge,
+#             end: self._halfedge,
+#             ccw: self._ccw,
 #             justStarted: true,
 #             next() {
-#                 if (!this.justStarted && this.current === this.end) {
+#                 if (!self.justStarted && self.current === self.end) {
 #                     return {
 #                         done: true
 #                     };
 # 
 #                 } else {
-#                     this.justStarted = false;
-#                     vertex = this.current.twin.vertex;
-#                     this.current = this.ccw ? this.current.twin.next : this.current.prev.twin;
+#                     self.justStarted = false;
+#                     vertex = self.current.twin.vertex;
+#                     self.current = self.ccw ? self.current.twin.next : self.current.prev.twin;
 #                     return {
 #                         done: false,
 #                         value: vertex
@@ -1684,8 +1698,8 @@ class VertexVertexIterator:
 # class VertexEdgeIterator {
 #     // constructor
 #     constructor(halfedge, ccw) {
-#         this._halfedge = halfedge;
-#         this._ccw = ccw;
+#         self._halfedge = halfedge;
+#         self._ccw = ccw;
 #     }
 class VertexEdgeIterator:
     def __init__(self, halfedge, ccw):
@@ -1696,20 +1710,20 @@ class VertexEdgeIterator:
 
 #     [Symbol.iterator]() {
 #         return {
-#             current: this._halfedge,
-#             end: this._halfedge,
-#             ccw: this._ccw,
+#             current: self._halfedge,
+#             end: self._halfedge,
+#             ccw: self._ccw,
 #             justStarted: true,
 #             next() {
-#                 if (!this.justStarted && this.current === this.end) {
+#                 if (!self.justStarted && self.current === self.end) {
 #                     return {
 #                         done: true
 #                     };
 # 
 #                 } else {
-#                     this.justStarted = false;
-#                     edge = this.current.edge;
-#                     this.current = this.ccw ? this.current.twin.next : this.current.prev.twin;
+#                     self.justStarted = false;
+#                     edge = self.current.edge;
+#                     self.current = self.ccw ? self.current.twin.next : self.current.prev.twin;
 #                     return {
 #                         done: false,
 #                         value: edge
@@ -1739,8 +1753,8 @@ class VertexFaceIterator:
 #         while (halfedge.onBoundary) {
 #             halfedge = halfedge.twin.next;
 #         } // halfedge must not be on the boundary
-#         this._halfedge = halfedge;
-#         this._ccw = ccw;
+#         self._halfedge = halfedge;
+#         self._ccw = ccw;
 #     }
     def __init__(self, halfedge, ccw):
         self.halfedge = halfedge;
@@ -1750,23 +1764,23 @@ class VertexFaceIterator:
 
 #     [Symbol.iterator]() {
 #         return {
-#             current: this._halfedge,
-#             end: this._halfedge,
-#             ccw: this._ccw,
+#             current: self._halfedge,
+#             end: self._halfedge,
+#             ccw: self._ccw,
 #             justStarted: true,
 #             next() {
-#                 while (this.current.onBoundary) {
-#                     this.current = this.ccw ? this.current.twin.next : this.current.prev.twin;
+#                 while (self.current.onBoundary) {
+#                     self.current = self.ccw ? self.current.twin.next : self.current.prev.twin;
 #                 } // halfedge must not be on the boundary
-#                 if (!this.justStarted && this.current === this.end) {
+#                 if (!self.justStarted && self.current === self.end) {
 #                     return {
 #                         done: true
 #                     };
 # 
 #                 } else {
-#                     this.justStarted = false;
-#                     face = this.current.face;
-#                     this.current = this.ccw ? this.current.twin.next : this.current.prev.twin;
+#                     self.justStarted = false;
+#                     face = self.current.face;
+#                     self.current = self.ccw ? self.current.twin.next : self.current.prev.twin;
 #                     return {
 #                         done: false,
 #                         value: face
@@ -1797,8 +1811,8 @@ class VertexFaceIterator:
 class VertexHalfedgeIterator:
 #     // constructor
 #     constructor(halfedge, ccw) {
-#         this._halfedge = halfedge;
-#         this._ccw = ccw;
+#         self._halfedge = halfedge;
+#         self._ccw = ccw;
 #     }
     def __init__(self, halfedge, ccw):
         self.halfedge = halfedge;
@@ -1808,20 +1822,20 @@ class VertexHalfedgeIterator:
 
 #     [Symbol.iterator]() {
 #         return {
-#             current: this._halfedge,
-#             end: this._halfedge,
-#             ccw: this._ccw,
+#             current: self._halfedge,
+#             end: self._halfedge,
+#             ccw: self._ccw,
 #             justStarted: true,
 #             next() {
-#                 if (!this.justStarted && this.current === this.end) {
+#                 if (!self.justStarted && self.current === self.end) {
 #                     return {
 #                         done: true
 #                     };
 # 
 #                 } else {
-#                     this.justStarted = false;
-#                     halfedge = this.current;
-#                     this.current = this.ccw ? this.current.twin.next : this.current.prev.twin;
+#                     self.justStarted = false;
+#                     halfedge = self.current;
+#                     self.current = self.ccw ? self.current.twin.next : self.current.prev.twin;
 #                     return {
 #                         done: false,
 #                         value: halfedge
@@ -1852,8 +1866,8 @@ class VertexCornerIterator:
 #         while (halfedge.onBoundary) {
 #             halfedge = halfedge.twin.next;
 #         } // halfedge must not be on the boundary
-#         this._halfedge = halfedge;
-#         this._ccw = ccw;
+#         self._halfedge = halfedge;
+#         self._ccw = ccw;
 #     }
     def __init__(self, halfedge, ccw):
         self.halfedge = halfedge;
@@ -1863,23 +1877,23 @@ class VertexCornerIterator:
 
 #     [Symbol.iterator]() {
 #         return {
-#             current: this._halfedge,
-#             end: this._halfedge,
-#             ccw: this._ccw,
+#             current: self._halfedge,
+#             end: self._halfedge,
+#             ccw: self._ccw,
 #             justStarted: true,
 #             next() {
-#                 while (this.current.onBoundary) {
-#                     this.current = this.ccw ? this.current.twin.next : this.current.prev.twin;
+#                 while (self.current.onBoundary) {
+#                     self.current = self.ccw ? self.current.twin.next : self.current.prev.twin;
 #                 } // halfedge must not be on the boundary
-#                 if (!this.justStarted && this.current === this.end) {
+#                 if (!self.justStarted && self.current === self.end) {
 #                     return {
 #                         done: true
 #                     };
 # 
 #                 } else {
-#                     this.justStarted = false;
-#                     corner = this.current.next.corner;
-#                     this.current = this.ccw ? this.current.twin.next : this.current.prev.twin;
+#                     self.justStarted = false;
+#                     corner = self.current.next.corner;
+#                     self.current = self.ccw ? self.current.twin.next : self.current.prev.twin;
 #                     return {
 #                         done: false,
 #                         value: corner
@@ -1914,14 +1928,14 @@ class HeatMethod:
 #    * @property {module:LinearAlgebra.SparseMatrix} F The mean curvature flow operator built on the input mesh.
 #    */
     def __init__(self, geometry):
-        this.geometry = geometry;
-        this.vertexIndex = indexElements(geometry.mesh.vertices);
+        self.geometry = geometry;
+        self.vertexIndex = indexElements(geometry.mesh.vertices);
   
         # build laplace and flow matrices
         t = Math.pow(geometry.meanEdgeLength(), 2);
-        M = geometry.massMatrix(this.vertexIndex);
-        this.A = geometry.laplaceMatrix(this.vertexIndex);
-        this.F = M.plus(this.A.timesReal(t));
+        M = geometry.massMatrix(self.vertexIndex);
+        self.A = geometry.laplaceMatrix(self.vertexIndex);
+        self.F = M.plus(self.A.timesReal(t));
 # 
 #   /**
 #    * Computes the vector field X = -∇u / |∇u|.
@@ -1933,15 +1947,15 @@ class HeatMethod:
 #    */
     def computeVectorField(self, u):
         X = {};
-        for f in this.geometry.mesh.faces:
-            normal = this.geometry.faceNormal(f);
-            area = this.geometry.area(f);
+        for f in self.geometry.mesh.faces:
+            normal = self.geometry.faceNormal(f);
+            area = self.geometry.area(f);
             gradU = Vector();
    
             for h in f.adjacentHalfedges():
-                i = this.vertexIndex[h.prev.vertex];
+                i = self.vertexIndex[h.prev.vertex];
                 ui = u.get(i, 0);
-                ei = this.geometry.vector(h);
+                ei = self.geometry.vector(h);
    
                 gradU.incrementBy(normal.cross(ei).times(ui));
    
@@ -1961,20 +1975,20 @@ class HeatMethod:
 #    * @returns {module:LinearAlgebra.DenseMatrix}
 #    */
     def computeDivergence(self, X):
-        vertices = this.geometry.mesh.vertices;
-        V = vertices.length;
+        vertices = self.geometry.mesh.vertices;
+        V = len(vertices);
         div = DenseMatrix.zeros(V, 1);
   
         for v in vertices:
-            i = this.vertexIndex[v];
+            i = self.vertexIndex[v];
             sum = 0;
             for h in v.adjacentHalfedges():
                 if (not h.onBoundary):
                     Xj = X[h.face];
-                    e1 = this.geometry.vector(h);
-                    e2 = this.geometry.vector(h.prev.twin);
-                    cotTheta1 = this.geometry.cotan(h);
-                    cotTheta2 = this.geometry.cotan(h.prev);
+                    e1 = self.geometry.vector(h);
+                    e2 = self.geometry.vector(h.prev.twin);
+                    cotTheta1 = self.geometry.cotan(h);
+                    cotTheta2 = self.geometry.cotan(h.prev);
                     sum += (cotTheta1 * e1.dot(Xj) + cotTheta2 * e2.dot(Xj));
             div.set(0.5 * sum, i, 0);
         return div;
@@ -2002,20 +2016,20 @@ class HeatMethod:
 #    */
     def compute(self, delta):
         # integrate heat flow
-        llt = this.F.chol();
+        llt = self.F.chol();
         u = llt.solvePositiveDefinite(delta);
   
         # compute unit vector field X and divergence ∇.X
-        X = this.computeVectorField(u);
-        div = this.computeDivergence(X);
+        X = self.computeVectorField(u);
+        div = self.computeDivergence(X);
   
         # solve poisson equation Δφ = ∇.X
-        llt = this.A.chol();
+        llt = self.A.chol();
         phi = llt.solvePositiveDefinite(div.negated());
   
         # since φ is unique up to an additive constant, it should
         # be shifted such that the smallest distance is zero
-        this.subtractMinimumDistance(phi);
+        self.subtractMinimumDistance(phi);
 
         return phi;
 
@@ -2107,7 +2121,7 @@ class MeshIO:
 
         # write indices
         indices = polygonSoup.face_vertex_indices
-        for i in range(0, indices.length, 3):
+        for i in range(0, len(indices), 3):
             output += "f ";
             for j in range(3):
                 index = indices[i + j] + 1;
@@ -2122,7 +2136,7 @@ class MeshIO:
 def test_halfedge_mesh():
     import bunny as bunny
     polysoup = MeshIO.readOBJ(bunny.bunny)
-    print(polysoup)
     mesh = Mesh.build(polysoup)
+    return (polysoup, mesh)
     # now that we have the mesh, run geodesics
     # https://raw.githubusercontent.com/GeometryCollective/geometry-processing-js/master/projects/geodesic-distance/index.html
