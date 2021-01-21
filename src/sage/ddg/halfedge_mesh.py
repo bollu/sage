@@ -2023,3 +2023,12 @@ class HeatMethod:
         this.subtractMinimumDistance(phi);
 
         return phi;
+
+def parse_obj_data(data):
+    raise RuntimeError("don't know how to parse!")
+
+def test_halfedge_mesh():
+    import sage.ddg.bunny as bunny
+    bunnymesh = parse_obj_data(bunny.bunny)
+    # now that we have the mesh, run geodesics
+    # https://raw.githubusercontent.com/GeometryCollective/geometry-processing-js/master/projects/geodesic-distance/index.html
