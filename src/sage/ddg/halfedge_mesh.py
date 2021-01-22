@@ -1,4 +1,5 @@
 
+
 # https://geometrycollective.github.io/geometry-processing-js/docs/index.html
 
 from sage.rings.all import RDF
@@ -6,11 +7,15 @@ from sage.plot.plot3d.index_face_set import IndexFaceSet
 from collections import defaultdict
 
 class Corner:
-    def __init__(self, halfedge, index):
-        assert isinstance(halfedge, Halfedge)
-        self.halfedge = halfedge
-        assert isinstance(index, int)
-        self.index = index
+    def __init__(self):
+        self.halfedge = None
+        self.index = None
+
+    # def __init__(self, halfedge, index):
+    #     assert isinstance(halfedge, Halfedge)
+    #     self.halfedge = halfedge
+    #     assert isinstance(index, int)
+    #     self.index = index
 # class Corner {
 #     /**
 #      * This class represents a corner in a {@link module:Core.Mesh Mesh}. It is a convenience
@@ -792,9 +797,11 @@ class Mesh:
         self.preallocateElements(positions, indices);
   
         # create and insert vertices
-        self.vertices = [None for _ in positions]
+        indexToVertex = {} # ix -> processed vertex (?)
         for i in range(len(positions)):
-            self.vertices[i] = Vertex()
+            v = Vertex()
+            self.vertices[i] = v
+            indexToVertex[i] = v
   
         # create and insert halfedges, edges and non boundary loop faces
         eIndex = 0;
@@ -802,7 +809,7 @@ class Mesh:
         existingHalfedges = {}
         hasTwinHalfedge = defaultdict(bool)
         # for (I = 0; I < indices.length; I += 3) {
-        for I in range(len(indices), 3):
+        for I in range(0, len(indices), 3):
             # create face
             f = Face();
             self.faces[I // 3] = f;
@@ -859,16 +866,13 @@ class Mesh:
                 else:
                     # create an edge and set its halfedge
                     e = Edge();
-                    self.edges.append(e)
-                    #self.edges[eIndex] = e;
-                    # eIndex += 1
+                    self.edges[eIndex] = e;
+                    eIndex += 1
                     h.edge = e;
                     e.halfedge = h;
   
                     # record the newly created edge and halfedge from vertex i to j
-                    # existingHalfedges.set(key, h);
                     existingHalfedges[key] = h
-                    # edgeCount.set(key, 1);
                     edgeCount[key] = 1
   
                 # check for non-manifold edges
@@ -881,6 +885,7 @@ class Mesh:
         # create and insert boundary halfedges and "imaginary" faces for boundary cycles
         # also create and insert corners
         # WAT?
+        print("## len(indices): %s | len(halfedges): %s" % (len(indices), len(self.halfedges)))
         hIndex = len(indices);
         cIndex = 0;
         # for (i = 0; i < indices.length; i++) {
@@ -899,6 +904,7 @@ class Mesh:
                 while True:
                     # create a halfedge
                     bH = Halfedge();
+                    print("## len(indices): %s | len(halfedges): %s" % (len(indices), len(self.halfedges)))
                     self.halfedges[hIndex] = bH;
                     hIndex += 1
                     boundaryCycle.append(bH);
@@ -952,7 +958,7 @@ class Mesh:
         # non-manifold vertices
         self.assertHasNoIsolatedVertices()
         self.assertHasNoIsolatedFaces()
-        self.assertHasOnlyManifoldVertices()
+        assert (not self.hasNonManifoldVertices())
         
         # index elements
         self.indexElements();
@@ -983,6 +989,7 @@ class Mesh:
                 else:
                     sortedEdges.add(value)
                     nBoundaryHalfedges += 1;
+        # end I loop for 
         nVertices = len(positions)
         nEdges = len(sortedEdges)
         assert len(indices) % 3 == 0
@@ -1030,32 +1037,24 @@ class Mesh:
 #    * @method module:Core.Mesh#hasNonManifoldVertices
 #    * @returns {boolean}
 #    */
-#   hasNonManifoldVertices() {
-#       adjacentFaces = Map();
-#       for (v of self.vertices) {
-#           adjacentFaces.set(v, 0);
-#       }
-# 
-#       for (f of self.faces) {
-#           for (v of f.adjacentVertices()) {
-#               adjacentFaces.set(v, adjacentFaces.get(v) + 1);
-#           }
-#       }
-# 
-#       for (b of self.boundaries) {
-#           for (v of b.adjacentVertices()) {
-#               adjacentFaces.set(v, adjacentFaces.get(v) + 1);
-#           }
-#       }
-# 
-#       for (v of self.vertices) {
-#           if (adjacentFaces.get(v) !== v.degree()) {
-#               return true;
-#           }
-#       }
-# 
-#       return false;
-#   }
+    def hasNonManifoldVertices(self):
+        adjacentFaces = {}
+        for v in self.vertices:
+            adjacentFaces[v] = 0
+
+        for f in self.faces:
+            for v in f.adjacentVertices():
+                adjacentFaces[v] +=  1
+
+        for b in self.boundaries:
+            for v in b.adjacentVertices():
+                adjacentFaces[v] += 1
+
+        # TODO: convert this to an asswert here
+        for v in self.vertices:
+            if adjacentFaces.get(v) != v.degree():
+                return True;
+        return False;
 # 
 #   /**
 #    * Assigns indices to this mesh's elements.
@@ -1262,6 +1261,9 @@ class FaceVertexIterator:
                 v = self.current.vertex
                 return v
 
+    def __iter__(self):
+        return self
+        
 #   [Symbol.iterator]() {
 #       return {
 #           current: self._halfedge,
@@ -1288,6 +1290,18 @@ class FaceVertexIterator:
 #   }
 # }
 
+    def __next__(self):
+        if not self._justStared and self._current == self._end:
+            raise StopIteration
+        else:
+            self._justStared = False
+            v = self._current.vertex
+            if self._ccw:
+                self._current = self._current.next
+            else:
+                self._current = self._current.prev
+            return v
+
 class FaceEdgeIterator:    
 # /**
 #  * This class represents an adjacent edge iterator for a {@link module:Core.Face Face}.
@@ -1300,6 +1314,9 @@ class FaceEdgeIterator:
 #       self._halfedge = halfedge;
 #       self._ccw = ccw;
 #   }
+
+    def __iter__(self):
+        return self
 
     def __init__(self, halfedge, ccw):
         self._halfedge = halfedge;
@@ -1428,6 +1445,7 @@ class FaceFaceIterator:
 class FaceHalfedgeIterator:
     def __init__(self, halfedge, ccw):
         self._halfedge = halfedge;
+        self._end = self._halfedge;
         self._ccw = ccw;
         self._current = self._halfedge;
         self._justStared = True;
@@ -1458,15 +1476,16 @@ class FaceHalfedgeIterator:
 #       }
 #   }
 # }
-
+    def __iter__(self):
+        return self
 
     def __next__(self):
-        if not self._justStared and self.current == self.end:
+        if not self._justStared and self._current == self._end:
             raise StopIteration
         else:
             self._justStared = False
-            h = self.current
-            self.current = self.current.next if self._ccw else self.current.prev
+            h = self._current
+            self._current = self._current.next if self._ccw else self._current.prev
             return h
 
 # /**
@@ -1539,12 +1558,15 @@ class Vertex:
 #      */
       # @property
     def degree(self):
-        return len(self.adjacentEdges())
+        # TODO: check if a faster implementation of degree is possible.
+        return len(list(self.adjacentEdges()))
 # 
 #     /**
 #      * Checks whether this vertex is isolated, i.e., it has no neighboring vertices.
 #      * @method module:Core.Vertex#isIsolated
 #      * @returns {boolean}
+    def isIsolated(self):
+        return self.halfedge == None
 # 
 #     /**
 #      * Checks whether this vertex lies on a boundary.
@@ -1703,10 +1725,11 @@ class VertexVertexIterator:
 #     }
 class VertexEdgeIterator:
     def __init__(self, halfedge, ccw):
-        self.halfedge = halfedge;
-        self.ccw = ccw
-        self.current = self.halfedge
-        self.justStared = True
+        self._halfedge = halfedge;
+        self._end = self._halfedge   
+        self._ccw = ccw
+        self._current = self._halfedge
+        self._justStarted = True
 
 #     [Symbol.iterator]() {
 #         return {
@@ -1734,12 +1757,15 @@ class VertexEdgeIterator:
 #     }
 # }
     def __iter__(self):
-        if not self.justStarted and self.current == self.halfedge:
+        return self
+
+    def __next__(self):
+        if not self._justStarted and self._current == self._end:
             return StopIteration
         else:
-            self.justStarted = False;
-            e = self.current.edge
-            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
+            self._justStarted = False;
+            e = self._current.edge
+            self._current = self._current.twin.next if self._ccw else self._current.prev.twin
             return e
 
 # /**
