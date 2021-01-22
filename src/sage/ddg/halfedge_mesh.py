@@ -886,6 +886,7 @@ class Mesh:
         # also create and insert corners
         # WAT?
         print("## len(indices): %s | len(halfedges): %s" % (len(indices), len(self.halfedges)))
+        print("creating halfedge...")
         hIndex = len(indices);
         cIndex = 0;
         # for (i = 0; i < indices.length; i++) {
@@ -893,6 +894,7 @@ class Mesh:
             # if a halfedge has no twin halfedge, create a face and
             # link it the corresponding boundary cycle
             h = self.halfedges[i];
+            print("considering h: %s" % h)
             if not hasTwinHalfedge[h]:
                 # create face
                 f = Face();
@@ -904,14 +906,13 @@ class Mesh:
                 while True:
                     # create a halfedge
                     bH = Halfedge();
-                    print("## len(indices): %s | len(halfedges): %s" % (len(indices), len(self.halfedges)))
                     self.halfedges[hIndex] = bH;
                     hIndex += 1
                     boundaryCycle.append(bH);
   
                     # grab the next halfedge along the boundary that does not have a twin halfedge
                     nextHe = he.next;
-                    while (hasTwinHalfedge.get(nextHe)):
+                    while hasTwinHalfedge[nextHe]:
                         nextHe = nextHe.twin.next;
   
                     # set the current halfedge's attributes
@@ -931,18 +932,19 @@ class Mesh:
                     he = nextHe;
 
                     # break walking the boundary when done.
+                    print("h: %s | he: %s" % (h, he))
                     if he == h:
                         break
   
                 # link the cycle of boundary halfedges together
-                n = boundaryCycle.length;
+                n = len(boundaryCycle)
                 # for (j = 0; j < n; j++) {
                 for j in range(n):
                     # boundary halfedges are linked in clockwise order
                     boundaryCycle[j].next = boundaryCycle[(j + n - 1) % n];
                     boundaryCycle[j].prev = boundaryCycle[(j + 1) % n];
-                    hasTwinHalfedge.set(boundaryCycle[j], true);
-                    hasTwinHalfedge.set(boundaryCycle[j].twin, true);
+                    hasTwinHalfedge[boundaryCycle[j]] = True
+                    hasTwinHalfedge[boundaryCycle[j]] = True
   
             # ^^^ end not having twin halfedge processing ^^^
             # point the newly created corner and its halfedge to each other
@@ -953,14 +955,26 @@ class Mesh:
                 self.corners[cIndex] = c;
                 cIndex += 1
 
-  
+        # convert dictionary into list. I need the dictionary because the 
+        # original code does weird as fuck shit to index out of the
+        # pre-allocated space.
+        halfedgesList = []
+        for i in range(len(self.halfedges)):
+            assert i in self.halfedges
+            halfedgesList.append(self.halfedges[i])
+        self.halfedges = halfedgesList
+
         # check if mesh has isolated vertices, isolated faces or
         # non-manifold vertices
+        print("verifying self: no isolated vs")
         self.assertHasNoIsolatedVertices()
+        print("verifying self: no isolated fs")
         self.assertHasNoIsolatedFaces()
-        assert (not self.hasNonManifoldVertices())
+        print("verifying self: no non manifold vs")
+        self.assertHasNoNonManifoldVertices()
         
         # index elements
+        print("indexing self")
         self.indexElements();
   
   
@@ -1001,7 +1015,7 @@ class Mesh:
         self.vertices =  [None for _ in range(nVertices)] # Array(nVertices);
         self.edges =     [None for _ in range(nEdges)] # Array(nEdges);
         self.faces =     [None for _ in range(nFaces)] # Array(nFaces);
-        self.halfedges = [None for _ in range(nHalfedges)] # Array(nHalfedges);
+        self.halfedges = {}
         self.corners =   [None for _ in range(nInteriorHalfedges)] # Array(nInteriorHalfedges);
 # 
 #   /**
@@ -1037,24 +1051,27 @@ class Mesh:
 #    * @method module:Core.Mesh#hasNonManifoldVertices
 #    * @returns {boolean}
 #    */
-    def hasNonManifoldVertices(self):
+    def assertHasNoNonManifoldVertices(self):
         adjacentFaces = {}
         for v in self.vertices:
             adjacentFaces[v] = 0
 
+        print("assertHasNoNonManifoldVertices: 1")
         for f in self.faces:
             for v in f.adjacentVertices():
                 adjacentFaces[v] +=  1
 
+        print("assertHasNoNonManifoldVertices: 2")
         for b in self.boundaries:
             for v in b.adjacentVertices():
                 adjacentFaces[v] += 1
 
+        print("assertHasNoNonManifoldVertices: 3")
         # TODO: convert this to an asswert here
         for v in self.vertices:
-            if adjacentFaces.get(v) != v.degree():
-                return True;
-        return False;
+            if adjacentFaces[v] != v.degree():
+                raise RuntimeError("expected number of adjacent faces to be equal to degree")
+        print("assertHasNoNonManifoldVertices: 4")
 # 
 #   /**
 #    * Assigns indices to this mesh's elements.
@@ -1315,8 +1332,6 @@ class FaceEdgeIterator:
 #       self._ccw = ccw;
 #   }
 
-    def __iter__(self):
-        return self
 
     def __init__(self, halfedge, ccw):
         self._halfedge = halfedge;
@@ -1335,6 +1350,9 @@ class FaceEdgeIterator:
             else:
                 self.current = self._current.prev
             return e
+
+    def __iter__(self):
+        return self
 #   [Symbol.iterator]() {
 #       return {
 #           current: self._halfedge,
@@ -1558,8 +1576,14 @@ class Vertex:
 #      */
       # @property
     def degree(self):
+        d = 0
+        print("computing degree...")
+        for _ in self.adjacentEdges():
+            d += 1
+        print("degree done! (%d)" % (d, ))
+        return d
         # TODO: check if a faster implementation of degree is possible.
-        return len(list(self.adjacentEdges()))
+        # return len(list(self.adjacentEdges()))
 # 
 #     /**
 #      * Checks whether this vertex is isolated, i.e., it has no neighboring vertices.
@@ -1603,6 +1627,7 @@ class Vertex:
 #      * }
 #      */
     def adjacentEdges(self, ccw = True):
+        print("creating adjcent edge iter...")
         return VertexEdgeIterator(self.halfedge, ccw);
 # 
 #     /**
@@ -1704,7 +1729,7 @@ class VertexVertexIterator:
 # }
     def __iter__(self):
         if not self.justStarted and self.current == self.halfedge:
-            return StopIteration
+            raise StopIteration
         else:
             self.justStarted = False;
             v = self.current.twin.vertex
@@ -1760,12 +1785,17 @@ class VertexEdgeIterator:
         return self
 
     def __next__(self):
-        if not self._justStarted and self._current == self._end:
-            return StopIteration
+        if (not self._justStarted) and self._current == self._end:
+            print("iterator: DONE")
+            raise StopIteration
         else:
             self._justStarted = False;
             e = self._current.edge
-            self._current = self._current.twin.next if self._ccw else self._current.prev.twin
+            if self._ccw:
+                self._current = self._current.twin.next
+            else:
+                self._current = self._current.prev.twin
+            print("vertex edge iterator.next: %s" % (e, ));
             return e
 
 # /**
@@ -1822,7 +1852,7 @@ class VertexFaceIterator:
             self.current = self.current.twin.next if self.ccw else self.current.prev.twin
 
         if not self.justStarted and self.current == self.halfedge:
-            return StopIteration
+            raise StopIteration
         else:
             self.justStarted = False;
             e = self.current.edge
@@ -1873,7 +1903,7 @@ class VertexHalfedgeIterator:
 # }
     def __iter__(self):
         if not self.justStarted and self.current == self.halfedge:
-            return StopIteration
+            raise StopIteration
         else:
             self.justStarted = False;
             h = self.current
@@ -1934,7 +1964,7 @@ class VertexCornerIterator:
             self.current = self.current.twin.next if self.ccw else self.current.prev.twin
 
         if not self.justStarted and self.current == self.halfedge:
-            return StopIteration
+            raise StopIteration
         else:
             self.justStarted = False;
             c = self.current.next.corner;
