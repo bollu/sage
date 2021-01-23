@@ -82,6 +82,9 @@ from sage.structure.sequence import Sequence
 from sage.structure.coerce cimport coercion_model
 from sage.structure.element import is_Vector
 from sage.structure.element cimport have_same_parent
+from sage.numerical.backends import cvxopt_backend
+from cvxopt import cholmod
+from cvxopt.base import spmatrix
 from sage.misc.verbose import verbose, get_verbose
 from sage.categories.all import Fields, IntegralDomains
 from sage.rings.ring import is_Ring
@@ -12502,8 +12505,22 @@ cdef class Matrix(Matrix1):
                 msg = "matrix must be square, not {0} x {1}"
                 raise ValueError(msg.format(self.nrows(), self.ncols()))
             if not self.base_ring().is_exact():
-                msg = 'base ring of the matrix must be exact, not {0}'
-                raise TypeError(msg.format(self.base_ring()))
+                nonzero = self.nonzero_positions()
+                print(nonzero)
+                rs = [r for (r, c) in nonzero]
+                cs = [c for (r, c) in nonzero]
+                vs = [float(self[ix]) for ix in nonzero]
+                Acvx = spmatrix(vs, rs, cs)
+                Fcvx = cholmod.symbolic(Acvx)
+                numeric = cholmod.numeric(Acvx,Fcvx)
+                cholcvx = cholmod.getfactor(Fcvx)
+                Cvals = {}
+                for i in range(len(cholcvx.I)):
+                    Cvals[(cholcvx.I[i], cholcvx.J[i])] = cholcvx.V[i]
+                C = Matrix(cholcvx.size, Cvals, sparse=True)
+                C.set_immutable()
+                self.cache('cholesky', C)
+                # TODO: figure out how to convert back.
             if not self.is_positive_definite():
                 msg = 'matrix is not positive definite, so cannot compute Cholesky decomposition'
                 raise ValueError(msg)
