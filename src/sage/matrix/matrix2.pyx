@@ -153,7 +153,6 @@ cdef class Matrix(Matrix1):
             sage: A._backslash_(B) == A.solve_right(B)
             True
         """
-        return self.solve_right(B)
 
     def subs(self, *args, **kwds):
         """
@@ -12406,7 +12405,7 @@ cdef class Matrix(Matrix1):
         method for matrices of that type. ::
 
             sage: F = RealField(100)
-            sage: A = matrix(F, [[1.0, 3.0], [3.0, -6.0]])
+            sage: A = matrix(F, [[ 78, -30, -37,  -2], [-30, 102, 179, -18], [-37, 179, 326, -38], [ -2, -18, -38,  15]], sparse=True) 
             sage: A.cholesky()
             Traceback (most recent call last):
             ...
@@ -12505,21 +12504,39 @@ cdef class Matrix(Matrix1):
                 msg = "matrix must be square, not {0} x {1}"
                 raise ValueError(msg.format(self.nrows(), self.ncols()))
             if not self.base_ring().is_exact():
+                # TODO: use different code path for dense.
                 nonzero = self.nonzero_positions()
                 print(nonzero)
                 rs = [r for (r, c) in nonzero]
+                print("### a ###")
                 cs = [c for (r, c) in nonzero]
+                print("### a ###")
                 vs = [float(self[ix]) for ix in nonzero]
+                print("c")
                 Acvx = spmatrix(vs, rs, cs)
+                print("d")
                 Fcvx = cholmod.symbolic(Acvx)
+                print("e")
                 numeric = cholmod.numeric(Acvx,Fcvx)
+                print("f")
                 cholcvx = cholmod.getfactor(Fcvx)
+                print("g")
                 Cvals = {}
                 for i in range(len(cholcvx.I)):
+                    print("h")
                     Cvals[(cholcvx.I[i], cholcvx.J[i])] = cholcvx.V[i]
-                C = Matrix(cholcvx.size, Cvals, sparse=True)
+                print("i")
+                from sage.matrix.constructor import matrix
+                C = matrix(self.base_ring(), cholcvx.size[0], cholcvx.size[1], Cvals, sparse=True)
+                # from sage.matrix.matrix_space import MatrixSpace
+                # from sage.matrix.matrix_space import MatrixSpace
+                # C =  MatrixSpace(self.base_ring(), nrows=cholcvx.size[0],ncols=cholcvx.size[1]).matrix(Cvals, sparse=True)
+                print("j")
                 C.set_immutable()
+                print("k")
                 self.cache('cholesky', C)
+                print("l")
+                return C
                 # TODO: figure out how to convert back.
             if not self.is_positive_definite():
                 msg = 'matrix is not positive definite, so cannot compute Cholesky decomposition'
