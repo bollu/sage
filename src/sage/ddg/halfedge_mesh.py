@@ -2075,7 +2075,7 @@ class HeatMethod:
 #    */
     def compute(self, delta):
         # integrate heat flow
-        llt = self.F.chol();
+        llt = self.F.cholesky();
         u = llt.solvePositiveDefinite(delta);
   
         # compute unit vector field X and divergence ∇.X
@@ -2083,7 +2083,7 @@ class HeatMethod:
         div = self.computeDivergence(X);
   
         # solve poisson equation Δφ = ∇.X
-        llt = self.A.chol();
+        llt = self.A.cholesky();
         phi = llt.solvePositiveDefinite(div.negated());
   
         # since φ is unique up to an additive constant, it should
