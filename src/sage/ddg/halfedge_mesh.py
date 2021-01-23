@@ -1,10 +1,11 @@
-
-
 # https://geometrycollective.github.io/geometry-processing-js/docs/index.html
 
 from sage.rings.all import RDF
 from sage.plot.plot3d.index_face_set import IndexFaceSet
 from collections import defaultdict
+# TODO: the below import looks sus as all hell. 
+from sage.modules.free_module_element import vector
+from sage.matrix.constructor import *
 
 class Corner:
     def __init__(self):
@@ -134,10 +135,10 @@ class Geometry:
         # TODO: consider using a `zip`?
         for (i, p) in enumerate(positions):
             v = self.mesh.vertices[i];
-            self.positions[v] = p;
+            self.positions[v] = vector(p);
   
         if (normalizePositions):
-            normalize(self.positions, mesh.vertices);
+            self.normalize(self.positions, mesh.vertices);
 # 
 #   /**
 #    * Computes the vector along a halfedge.
@@ -180,7 +181,8 @@ class Geometry:
 #    * @returns {number}
 #    */
     def meanEdgeLength(self):
-        return sum([self.length(e) for e in edges] / float(len(self.edges)))
+        es = self.mesh.edges
+        return sum([self.length(e) for e in es]) / float(len(es))
         # sum = 0;
         # edges = self.mesh.edges;
         # for (e of edges) {
@@ -195,11 +197,13 @@ class Geometry:
 #    * @param {module:Core.Face} f The face whose area needs to be computed.
 #    * @returns {number}
 #    */
-    def area(f):
+    def area(self, f):
+        assert isinstance(f, Face)
         if (f.isBoundaryLoop()): return 0.0;
         u = self.vector(f.halfedge);
-        v = self.vector(f.halfedge.prev).negated();
-        return 0.5 * u.cross(v).norm();
+        v = -1 * self.vector(f.halfedge.prev)
+        # TODO: should I encode 1/2 in some other way?
+        return 0.5 * u.cross_product(v).norm();
 # 
 #   /**
 #    * Computes the total surface area of a mesh.
@@ -229,7 +233,7 @@ class Geometry:
         # TODO Sid: negated?! why?
         v = self.vector(f.halfedge.prev).negated();
   
-        return u.cross(v).unit();
+        return u.cross_product(v).unit();
 # 
 #   /**
 #    * Computes the centroid of a face.
@@ -268,10 +272,10 @@ class Geometry:
         # TODO: what does this computation do? how does this work?
         ac = c.minus(a);
         ab = b.minus(a);
-        w = ab.cross(ac);
+        w = ab.cross_product(ac);
         
-        u = (w.cross(ab)).times(ac.norm2());
-        v = (ac.cross(w)).times(ab.norm2());
+        u = (w.cross_product(ab)).times(ac.norm2());
+        v = (ac.cross_product(w)).times(ab.norm2());
         x = (u.plus(v)).over(2 * w.norm2());
   
         return x.plus(a);
@@ -288,13 +292,13 @@ class Geometry:
         # pick the single vector in "basis of normal" as the face normal.
         # find e2 by finding the unique vector perpendicular to both
         # e1 and normal.
-        # Note that this works in 3D due to the existence of the cross product.
+        # Note that this works in 3D due to the existence of the cross_product product.
         e1 = self.vector(f.halfedge).unit();
         normal = self.faceNormal(f);
 
         # guaranteed to have unit magnitude:
         # |e1 x normal| = |e1| x |normal| = 1x1 = 1
-        e2 = normal.cross(e1);
+        e2 = normal.cross_product(e1);
     
         return [e1, e2];
 # 
@@ -308,7 +312,8 @@ class Geometry:
         u = self.vector(c.halfedge.prev).unit();
         v = self.vector(c.halfedge.next).negated().unit();
   
-        return Math.acos(Math.max(-1.0, Math.min(1.0, u.dot(v))));
+        # there should be an `atan2` somewhere? this seems to clunky
+        return acos(max(-1.0, Math.min(1.0, u.dot_product(v))));
 # 
 #   /**
 #    * Computes the cotangent of the angle opposite to a halfedge.
@@ -321,10 +326,10 @@ class Geometry:
             return 0.0;
 
         u = self.vector(h.prev);
-        v = self.vector(h.next).negated();
+        v = -1 * self.vector(h.next)
   
         # TODO: write a succinct derivation.
-        return u.dot(v) / u.cross(v).norm();
+        return u.dot_product(v) / u.cross_product(v).norm();
 # 
 #   /**
 #    * Computes the signed angle (in radians) between two adjacent faces.
@@ -342,7 +347,7 @@ class Geometry:
         w = self.vector(h).unit();
   
         cosTheta = n1.dot(n2);
-        sinTheta = n1.cross(n2).dot(w);
+        sinTheta = n1.cross_product(n2).dot(w);
   
         # TODO: draw a picture
         return Math.atan2(sinTheta, cosTheta);
@@ -472,7 +477,7 @@ class Geometry:
             u = self.vector(c.halfedge.prev);
             v = self.vector(c.halfedge.next).negated();
    
-            n.incrementBy(u.cross(v).over(u.norm2() * v.norm2()));
+            n.incrementBy(u.cross_product(v).over(u.norm2() * v.norm2()));
 
         n.normalize();
         return n;
@@ -561,21 +566,24 @@ class Geometry:
 #    TODO: why do we build positive definite operator?
 #    */
     def laplaceMatrix(self, vertexIndex):
-        V = self.mesh.vertices.length;
+        # V = self.mesh.vertices.length;
         # TODO: what is Triplet?
-        T = Triplet(V, V);
+        # T = Triplet(V, V);
+        laplace = {}
         for v in self.mesh.vertices:
             i = vertexIndex[v];
-            sum = 1e-8;
+            total = 1e-8;
     
             for h in v.adjacentHalfedges():
                 j = vertexIndex[h.twin.vertex];
                 weight = (self.cotan(h) + self.cotan(h.twin)) / 2;
-                sum += weight;
-                T.addEntry(-weight, i, j);
-            T.addEntry(sum, i, i);
+                total += weight;
+                laplace[(i, j)] = -1  * weight
+                # T.addEntry(-weight, i, j);
+            # T.addEntry(total, i, i);
+            laplace[(i, i)] = total
     
-        return SparseMatrix.fromTriplet(T);
+        return Matrix(len(self.mesh.vertices), laplace, sparse=True)
 # 
 #   /**
 #    * Builds a sparse diagonal mass matrix containing the barycentric dual area of each vertex
@@ -585,13 +593,17 @@ class Geometry:
 #    * @returns {module:LinearAlgebra.SparseMatrix}
 #    */
     def massMatrix(self, vertexIndex):
-        V = self.mesh.vertices.length;
-        T = Triplet(V, V);
+        # V = len(self.mesh.vertices);
+        # T = Triplet(V, V);
+        # VxV matrix
+        # mass = Matrix(len(self.mesh.vertices), sparse=True)
+        mass = {}
         for v in self.mesh.vertices:
             i = vertexIndex[v];
-            T.addEntry(self.barycentricDualArea(v), i, i);
+            # T.addEntry(self.barycentricDualArea(v), i, i);
+            mass[(i,i)] = self.barycentricDualArea(v)
   
-        return SparseMatrix.fromTriplet(T);
+        return Matrix(len(self.mesh.vertices), mass, sparse=True)
 # 
 #   /**
 #    * Builds a sparse complex laplace matrix. The laplace operator is negative semidefinite;
@@ -617,7 +629,6 @@ class Geometry:
             T.addEntry(Complex(sum), i, i);
   
         return ComplexSparseMatrix.fromTriplet(T);
-# }
 # 
 # /**
 #  * Centers a mesh about the origin and rescales it to unit radius.
@@ -627,36 +638,25 @@ class Geometry:
 #  * @param {module:Core.Vertex[]} vertices The vertices of a mesh.
 #  * @param {boolean} rescale A flag indicating whether mesh positions should be scaled to a unit radius.
 #  */
-# function normalize(positions, vertices, rescale = true) {
-#   // compute center of mass
-#   N = vertices.length;
-#   cm = Vector();
-#   for (v of vertices) {
-#       p = positions[v];
-# 
-#       cm.incrementBy(p);
-#   }
-#   cm.divideBy(N);
-# 
-#   // translate to origin and determine radius
-#   radius = -1;
-#   for (v of vertices) {
-#       p = positions[v];
-# 
-#       p.decrementBy(cm);
-#       radius = Math.max(radius, p.norm());
-#   }
-# 
-#   // rescale to unit radius
-#   if (rescale) {
-#       for (v of vertices) {
-#           p = positions[v];
-# 
-#           p.divideBy(radius);
-#       }
-#   }
-# }
-
+    def normalize(self, positions, vertices, rescale=True):
+        # compute center of mass
+        N = len(vertices);
+        cm = vector((0, 0, 0));
+        for v in vertices:
+            p = positions[v];
+            # cm.incrementBy(p);
+            cm += p
+        # cm.divideBy(N);     
+        cm /= N
+        radius = -1;
+        for v in vertices:
+            # p.decrementBy(cm);
+            positions[v] = positions[v] - cm
+            radius = max(radius, p.norm())
+        
+        if rescale:
+            for v in vertices:
+                positions[v] = positions[v] / radius
 
 # /**
 #  * This module implements a halfedge mesh data structure and its associated geometry.
@@ -1108,31 +1108,6 @@ class Mesh:
         for b in self.boundaries:
             b.index = index
             index += 1
-# 
-# /**
-#  * Assigns an index to each element in elementList. Indices can be accessed by using
-#  * elements as keys in the returned dictionary.
-#  * @global
-#  * @function module:Core.indexElements
-#  * @param {Object[]} elementList An array of any one of the following mesh elements -
-#  * vertices, edges, faces, corners, halfedges, boundaries.
-#  * @returns {Object} A dictionary mapping each element in elementList to a unique index
-#  * between 0 and |elementList|-1.
-#  * @example
-#  * vertexIndex = indexElements(mesh.vertices);
-#  * v = mesh.vertices[0];
-#  * i = vertexIndex[v];
-#  * console.log(i); // prints 0
-#  */
-# function indexElements(elementList) {
-#   i = 0;
-#   index = {};
-#   for (element of elementList) {
-#       index[element] = i++;
-#   }
-# 
-#   return index;
-# }
 
 class Face:
     # /**
@@ -1699,7 +1674,7 @@ class VertexVertexIterator:
         self.halfedge = halfedge;
         self.ccw = ccw
         self.current = self.halfedge
-        self.justStared = True
+        self.justStarted = True
 
 
 #     [Symbol.iterator]() {
@@ -1813,10 +1788,10 @@ class VertexFaceIterator:
 #         self._ccw = ccw;
 #     }
     def __init__(self, halfedge, ccw):
-        self.halfedge = halfedge;
-        self.ccw = ccw
-        self.current = self.halfedge
-        self.justStared = True
+        self._halfedge = halfedge;
+        self._ccw = ccw
+        self._current = self._halfedge
+        self._justStarted = True
 
 #     [Symbol.iterator]() {
 #         return {
@@ -1848,16 +1823,19 @@ class VertexFaceIterator:
 # }
 # 
     def __iter__(self):
-        while self.current.onBoundary:
-            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
+        return self
 
-        if not self.justStarted and self.current == self.halfedge:
+    def __next__(self):
+        while self._current.onBoundary:
+            self._current = self._current.twin.next if self._ccw else self._current.prev.twin
+
+        if not self._justStarted and self._current == self._halfedge:
             raise StopIteration
         else:
-            self.justStarted = False;
-            e = self.current.edge
-            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
-            return e
+            self._justStarted = False;
+            f = self._current.face
+            self._current = self._current.twin.next if self._ccw else self._current.prev.twin
+            return f
 
 # /**
 #  * This class represents an adjacent halfedge iterator for a {@link module:Core.Vertex Vertex}.
@@ -1871,10 +1849,10 @@ class VertexHalfedgeIterator:
 #         self._ccw = ccw;
 #     }
     def __init__(self, halfedge, ccw):
-        self.halfedge = halfedge;
-        self.ccw = ccw
-        self.current = self.halfedge
-        self.justStared = True
+        self._halfedge = halfedge;
+        self._ccw = ccw
+        self._current = self._halfedge
+        self._justStarted = True
 
 #     [Symbol.iterator]() {
 #         return {
@@ -1902,12 +1880,15 @@ class VertexHalfedgeIterator:
 #     }
 # }
     def __iter__(self):
-        if not self.justStarted and self.current == self.halfedge:
+        return self
+    
+    def __next__(self):
+        if not self._justStarted and self._current == self._halfedge:
             raise StopIteration
         else:
-            self.justStarted = False;
-            h = self.current
-            self.current = self.current.twin.next if self.ccw else self.current.prev.twin
+            self._justStarted = False;
+            h = self._current
+            self._current = self._current.twin.next if self._ccw else self._current.prev.twin
             return h
 
 # 
@@ -1929,7 +1910,7 @@ class VertexCornerIterator:
         self.halfedge = halfedge;
         self.ccw = ccw
         self.current = self.halfedge
-        self.justStared = True
+        self.justStarted = True
 
 #     [Symbol.iterator]() {
 #         return {
@@ -1971,6 +1952,28 @@ class VertexCornerIterator:
             self.current = self.current.twin.next if self.ccw else self.current.prev.twin
             return c
 
+#  Assigns an index to each element in elementList. Indices can be accessed by using
+#  elements as keys in the returned dictionary.
+#  @global
+#  @function module:Core.indexElements
+#  @param {Object[]} elementList An array of any one of the following mesh elements -
+#  vertices, edges, faces, corners, halfedges, boundaries.
+#  @returns {Object} A dictionary mapping each element in elementList to a unique index
+#  between 0 and |elementList|-1.
+#  @example
+#  let vertexIndex = indexElements(mesh.vertices);
+#  let v = mesh.vertices[0];
+#  let i = vertexIndex[v];
+#  console.log(i); // prints 0
+def indexElements(elementList):
+    i = 0;
+    index = {}
+    for element in elementList:
+        index[element] = i
+        i += 1
+    return index;
+
+
 
 class HeatMethod:
 #   /**
@@ -1988,10 +1991,10 @@ class HeatMethod:
         self.vertexIndex = indexElements(geometry.mesh.vertices);
   
         # build laplace and flow matrices
-        t = Math.pow(geometry.meanEdgeLength(), 2);
+        t = pow(geometry.meanEdgeLength(), 2);
         M = geometry.massMatrix(self.vertexIndex);
         self.A = geometry.laplaceMatrix(self.vertexIndex);
-        self.F = M.plus(self.A.timesReal(t));
+        self.F = M + self.A*t;
 # 
 #   /**
 #    * Computes the vector field X = -∇u / |∇u|.
@@ -2013,7 +2016,7 @@ class HeatMethod:
                 ui = u.get(i, 0);
                 ei = self.geometry.vector(h);
    
-                gradU.incrementBy(normal.cross(ei).times(ui));
+                gradU.incrementBy(normal.cross_product(ei).times(ui));
    
             gradU.divideBy(2 * area);
             gradU.normalize();
@@ -2193,6 +2196,10 @@ def test_halfedge_mesh():
     import bunny as bunny
     polysoup = MeshIO.readOBJ(bunny.bunny)
     mesh = Mesh.build(polysoup)
+    geometry = Geometry(mesh, polysoup.vertex_positions)
+    hm = HeatMethod(geometry)
+    phi = hm.compute() # compute heat
     return (polysoup, mesh)
+
     # now that we have the mesh, run geodesics
     # https://raw.githubusercontent.com/GeometryCollective/geometry-processing-js/master/projects/geodesic-distance/index.html
