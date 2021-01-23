@@ -153,6 +153,7 @@ cdef class Matrix(Matrix1):
             sage: A._backslash_(B) == A.solve_right(B)
             True
         """
+        return self.solve_right(B)
 
     def subs(self, *args, **kwds):
         """
