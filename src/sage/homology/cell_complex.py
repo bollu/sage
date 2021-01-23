@@ -238,43 +238,49 @@ class GenericCellComplex(SageObject):
         except TypeError:
             return sorted(n_cells, key=str)
 
-    def f_vector(self):
-        """
-        The `f`-vector of this cell complex: a list whose `n^{th}`
-        item is the number of `(n-1)`-cells.  Note that, like all
-        lists in Sage, this is indexed starting at 0: the 0th element
-        in this list is the number of `(-1)`-cells (which is 1: the
-        empty cell is the only `(-1)`-cell).
+    # def f_vector(self):
+    #     """
+    #     The `f`-vector of this cell complex: a list whose `n^{th}`
+    #     item is the number of `(n-1)`-cells.  Note that, like all
+    #     lists in Sage, this is indexed starting at 0: the 0th element
+    #     in this list is the number of `(-1)`-cells (which is 1: the
+    #     empty cell is the only `(-1)`-cell).
 
-        EXAMPLES::
+    #     EXAMPLES::
 
-            sage: simplicial_complexes.KleinBottle().f_vector()
-            [1, 8, 24, 16]
-            sage: delta_complexes.KleinBottle().f_vector()
-            [1, 1, 3, 2]
-            sage: cubical_complexes.KleinBottle().f_vector()
-            [1, 42, 84, 42]
-        """
-        return [self._f_dict()[n] for n in range(-1, self.dimension()+1)]
+    #         sage: simplicial_complexes.KleinBottle().f_vector()
+    #         [1, 8, 24, 16]
+    #         sage: delta_complexes.KleinBottle().f_vector()
+    #         [1, 1, 3, 2]
+    #         sage: cubical_complexes.KleinBottle().f_vector()
+    #         [1, 42, 84, 42]
+    #     """
+    #     return [self._f_dict()[n] for n in range(-1, self.dimension()+1)]
 
-    def _f_dict(self):
-        """
-        The `f`-vector of this cell complex as a dictionary: the
-        item associated to an integer `n` is the number of the
-        `n`-cells.
+    # def f_vector_fast(self):
+    #     answer = [-1]
+    #     for n in range(self.dimension() + 1):
+    #         answer.append(len(self.cells()[n]))
+    #     return answer
 
-        EXAMPLES::
+    # def _f_dict(self):
+    #     """
+    #     The `f`-vector of this cell complex as a dictionary: the
+    #     item associated to an integer `n` is the number of the
+    #     `n`-cells.
 
-            sage: simplicial_complexes.KleinBottle()._f_dict()[1]
-            24
-            sage: delta_complexes.KleinBottle()._f_dict()[1]
-            3
-        """
-        answer = {}
-        answer[-1] = 1
-        for n in range(self.dimension() + 1):
-            answer[n] = len(self.cells()[n])
-        return answer
+    #     EXAMPLES::
+
+    #         sage: simplicial_complexes.KleinBottle()._f_dict()[1]
+    #         24
+    #         sage: delta_complexes.KleinBottle()._f_dict()[1]
+    #         3
+    #     """
+    #     answer = {}
+    #     answer[-1] = 1
+    #     for n in range(self.dimension() + 1):
+    #         answer[n] = len(self.cells()[n])
+    #     return answer
 
     def euler_characteristic(self):
         r"""
