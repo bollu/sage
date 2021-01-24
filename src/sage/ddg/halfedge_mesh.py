@@ -345,8 +345,8 @@ class Geometry:
         n2 = self.faceNormal(h.twin.face);
         w = self.vector(h).normalized();
   
-        cosTheta = n1.dot(n2);
-        sinTheta = n1.cross_product(n2).dot(w);
+        cosTheta = n1.dot_product(n2);
+        sinTheta = n1.cross_product(n2).dot_product(w);
   
         # TODO: draw a picture
         return Math.atan2(sinTheta, cosTheta);
@@ -2045,11 +2045,12 @@ class HeatMethod:
     def computeDivergence(self, X):
         vertices = self.geometry.mesh.vertices;
         V = len(vertices);
-        div = DenseMatrix.zeros(V, 1);
+        # TODO: how to pick ring?
+        div = zero_vector(QQ, V)
   
         for v in vertices:
             i = self.vertexIndex[v];
-            sum = 0;
+            total = 0;
             for h in v.adjacentHalfedges():
                 if (not h.onBoundary):
                     Xj = X[h.face];
@@ -2057,8 +2058,9 @@ class HeatMethod:
                     e2 = self.geometry.vector(h.prev.twin);
                     cotTheta1 = self.geometry.cotan(h);
                     cotTheta2 = self.geometry.cotan(h.prev);
-                    sum += (cotTheta1 * e1.dot(Xj) + cotTheta2 * e2.dot(Xj));
-            div.set(0.5 * sum, i, 0);
+                    total += (cotTheta1 * e1.dot_product(Xj) + cotTheta2 * e2.dot_product(Xj));
+            div[i] = 0.5 * total
+        div.set_immutable()
         return div;
 # 
 #   /**
@@ -2068,12 +2070,16 @@ class HeatMethod:
 #    * @param {module:LinearAlgebra.DenseMatrix} phi The (minimum 0) solution to the poisson equation Δφ = ∇.X.
 #    */
     def subtractMinimumDistance(self, phi):
-        min = Infinity;
-        for i in range(phi.nRows()): 
-            min = Math.min(phi.get(i, 0), min);
+        out = copy(phi)
+        assert len(phi) > 0
+        minval = phi[0]
+        for i in range(len(phi)):
+            minval = min(phi[i], minval);
   
-        for i in range(phi.nRows):
-            phi.set(phi.get(i, 0) - min, i, 0);
+        for i in range(len(phi)):
+            out[i] = phi[i] - minval
+        out.set_immutable()
+        return out
 # 
 #   /**
 #    * Computes the geodesic distances φ using the heat method.
