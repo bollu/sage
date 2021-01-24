@@ -1,4 +1,6 @@
-# https://doc.sagemath.org/html/en/thematic_tutorials/numerical_sage/cvxopt.html
+
+
+# httpolysoup://doc.sagemath.org/html/en/thematic_tutorials/numerical_sage/cvxopt.html
 from cvxopt.base import spmatrix
 from cvxopt import cholmod
 from cvxopt import amd
@@ -52,10 +54,62 @@ from sage.ddg.halfedge_mesh import *
 # 
 # choldoc()
 # 
-polysoup = MeshIO.readOBJ(sage.ddg.triangle.triangle)
+# polysoup = MeshIO.readOBJ(sage.ddg.triangle.triangle)
+# polysoup = MeshIO.readOBJ(sage.ddg.bunny.bunny)
 print(polysoup)
 mesh = Mesh(polysoup)
 geometry = Geometry(mesh, polysoup.vertex_positions)
+srcs = vector(QQ, len(polysoup.vertex_positions)); srcs[0] = 1
+print("creating HeatMethod...")
 hm = HeatMethod(geometry)
-srcs = [1, 0, 0, 0] # heat on tetrahedron vertices
-hm.compute(srcs)
+print("created HeatMethod! computing on the source given")
+outh = hm.compute(srcs)
+print("computed! plotting")
+
+from sage.plot.plot3d.texture import Texture
+import random
+random.seed(0)
+fs= []
+ts = []
+davgs = []
+
+print(out)
+for fix in range(0, len(polysoup.face_vertex_indices), 3):
+  fs.append(polysoup.face_vertex_indices[fix:fix+3])
+  ds = [out[vix] for vix in polysoup.face_vertex_indices[fix:fix+1]]
+  avg = float(sum(ds)) / 3.0
+  davgs.append(avg)
+  
+dmin = min(davgs); dmax = max(davgs)
+for d in davgs:
+  dclamp = (d - dmin) / (dmax - dmin)
+  ts.append(Texture(color=(dclamp, dclamp, dclamp)))
+ifs = IndexFaceSet(fs, polysoup.vertex_positions, texture_list=ts)
+ifs.plot()
+
+#    function updateColors(phi = undefined) {
+#        maxPhi = 0.0;
+#        if (phi) {
+#            for (let i = 0; i < phi.nRows(); i++) {
+#                maxPhi = Math.max(phi.get(i, 0), maxPhi);
+#            }
+#        }
+#
+#        for (let v of mesh.vertices) {
+#            let i = v.index;
+#
+#            let color;
+#            if (phi) {
+#                color = colormap(maxPhi - phi.get(i, 0), 0, maxPhi, hot);
+#
+#            } else {
+#                color = ORANGE;
+#            }
+#
+#            colors[3 * i + 0] = color.x;
+#            colors[3 * i + 1] = color.y;
+#            colors[3 * i + 2] = color.z;
+#        }
+#
+#        threeGeometry.attributes.color.needsUpdate = true;
+#    }

@@ -12507,18 +12507,22 @@ cdef class Matrix(Matrix1):
                 raise ValueError(msg.format(self.nrows(), self.ncols()))
             if not self.base_ring().is_exact():
                 # TODO: use different code path for dense.
+                print("finding nonzero")
                 nonzero = self.nonzero_positions()
                 rs = [r for (r, c) in nonzero]
                 cs = [c for (r, c) in nonzero]
                 vs = [float(self[ix]) for ix in nonzero]
                 Acvx = spmatrix(vs, rs, cs)
+                print("asking cholmod")
                 Fcvx = cholmod.symbolic(Acvx)
                 numeric = cholmod.numeric(Acvx,Fcvx)
                 cholcvx = cholmod.getfactor(Fcvx)
+                print("unmarshalling cholmod")
                 Cvals = {}
                 for i in range(len(cholcvx.I)):
                     Cvals[(cholcvx.I[i], cholcvx.J[i])] = cholcvx.V[i]
                 from sage.matrix.constructor import matrix
+                print("building matrix again")
                 C = matrix(self.base_ring(), cholcvx.size[0], cholcvx.size[1], Cvals, sparse=True)
                 C.set_immutable()
                 self.cache('cholesky', C)

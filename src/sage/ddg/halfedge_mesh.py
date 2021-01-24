@@ -1986,11 +1986,14 @@ class HeatMethod:
 #    */
     def __init__(self, geometry):
         self.geometry = geometry;
+        print("indexing elements")
         self.vertexIndex = indexElements(geometry.mesh.vertices);
   
         # build laplace and flow matrices
         t = pow(geometry.meanEdgeLength(), 2);
+        print("creating mass matrix")
         M = geometry.massMatrix(self.vertexIndex);
+        print("creating laplace matrix")
         self.A = geometry.laplaceMatrix(self.vertexIndex);
         self.F = M + self.A*t;
 # 
@@ -2091,26 +2094,33 @@ class HeatMethod:
     def compute(self, delta):
         # TODO: how do I actually poke through SAGE class hierarchy
         # and check that this is a vector?
-        delta = vector(delta)
+        # delta = vector(delta)
         # integrate heat flow
+        print("computing chokesly of F")
         llt = self.F.cholesky();
         # how to tell sage that llt is PD vv ?
         print("llt: (%s, %s)" % (llt.nrows(), llt.ncols()))
         print("delta: %s" % (len(delta)))
+        print("solving llt")
         u = llt.solve_right(delta)
         # u = llt.solvePositiveDefinite(delta);
   
         # compute unit vector field X and divergence ∇.X
+        print("computing vector field")
         X = self.computeVectorField(u);
+        print("computing divergence")
         div = self.computeDivergence(X);
   
         # solve poisson equation Δφ = ∇.X
+        print("solving poisson eqn")
         llt = self.A.cholesky();
+        print("solving for phi")
         phi = llt.solve_right(-1 * div)
         # phi = llt.solvePositiveDefinite(div.negated());
   
         # since φ is unique up to an additive constant, it should
         # be shifted such that the smallest distance is zero
+        print("shifting phi")
         self.subtractMinimumDistance(phi);
 
         return phi;
@@ -2226,3 +2236,25 @@ def test_halfedge_mesh():
 
     # now that we have the mesh, run geodesics
     # https://raw.githubusercontent.com/GeometryCollective/geometry-processing-js/master/projects/geodesic-distance/index.html
+
+class ScalarField:
+    def __init__(self, mesh, field):
+        self.field = field
+
+    def plot3d(self, geometry):
+        assert len(self.field) == len(geometry.mesh.vertices)
+        fs = []
+        ts = []
+        colors = []
+        # chunk the face_vertex_indices into groups of 3
+        maxval = max(self.field)
+        for fix in range(0, len(self.face_vertex_indices), 3):
+
+            fs.append(self.face_vertex_indices[fix:fix+3])
+            ts.append(Texture(color=random.choice([(1, 0, 0), (0, 1, 0)])))
+
+        # return the SAGE class that represents a 3d model
+        # TODO: figure out how to get this to work directly in the jupyter
+        # notebook when calling 
+        return IndexFaceSet(fs, self.vertex_positions, texture_list=ts)
+
