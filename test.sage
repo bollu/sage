@@ -57,5 +57,5 @@ print(polysoup)
 mesh = Mesh(polysoup)
 geometry = Geometry(mesh, polysoup.vertex_positions)
 hm = HeatMethod(geometry)
-srcs = []
+srcs = [1, 0, 0, 0] # heat on tetrahedron vertices
 hm.compute(srcs)

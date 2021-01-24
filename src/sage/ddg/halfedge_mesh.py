@@ -4,7 +4,7 @@ from sage.rings.all import RDF
 from sage.plot.plot3d.index_face_set import IndexFaceSet
 from collections import defaultdict
 # TODO: the below import looks sus as all hell. 
-from sage.modules.free_module_element import vector
+from sage.modules.free_module_element import vector, zero_vector
 from sage.matrix.constructor import *
 
 class Corner:
@@ -231,9 +231,8 @@ class Geometry:
   
         u = self.vector(f.halfedge);
         # TODO Sid: negated?! why?
-        v = self.vector(f.halfedge.prev).negated();
-  
-        return u.cross_product(v).unit();
+        v = -1 * self.vector(f.halfedge.prev)
+        return u.cross_product(v).normalized();
 # 
 #   /**
 #    * Computes the centroid of a face.
@@ -293,7 +292,7 @@ class Geometry:
         # find e2 by finding the unique vector perpendicular to both
         # e1 and normal.
         # Note that this works in 3D due to the existence of the cross_product product.
-        e1 = self.vector(f.halfedge).unit();
+        e1 = self.vector(f.halfedge).normalized();
         normal = self.faceNormal(f);
 
         # guaranteed to have unit magnitude:
@@ -309,8 +308,8 @@ class Geometry:
 #    * @returns {number} The angle clamped between 0 and π.
 #    */
     def angle(self, c):
-        u = self.vector(c.halfedge.prev).unit();
-        v = self.vector(c.halfedge.next).negated().unit();
+        u = self.vector(c.halfedge.prev).normalized();
+        v = self.vector(c.halfedge.next).negated().normalized();
   
         # there should be an `atan2` somewhere? this seems to clunky
         return acos(max(-1.0, Math.min(1.0, u.dot_product(v))));
@@ -344,7 +343,7 @@ class Geometry:
   
         n1 = self.faceNormal(h.face);
         n2 = self.faceNormal(h.twin.face);
-        w = self.vector(h).unit();
+        w = self.vector(h).normalized();
   
         cosTheta = n1.dot(n2);
         sinTheta = n1.cross_product(n2).dot(w);
@@ -397,8 +396,7 @@ class Geometry:
         for f in v.adjacentFaces():
             normal = self.faceNormal(f);
             n.incrementBy(normal);
-        n.normalize();    
-        return n;
+        return n.normalized();    
 # 
 #   /**
 #    * Computes the normal at a vertex using the "face area weights" method.
@@ -413,7 +411,7 @@ class Geometry:
             area = self.area(f);
   
             n.incrementBy(normal.times(area));
-        n.normalize();
+        n = n.normalized();
         return n;
 # 
 #   /**
@@ -430,7 +428,7 @@ class Geometry:
             angle = self.angle(c);
             n.incrementBy(normal.times(angle));
    
-        n.normalize();
+        n = n.normalized();
         return n;
 # 
 #   /**
@@ -447,7 +445,7 @@ class Geometry:
   
             n.decrementBy(self.vector(h).times(weight));
   
-        n.normalize();
+        n = n.normalized();
         return n;
   
 #   /**
@@ -462,7 +460,7 @@ class Geometry:
             weight = 0.5 * (self.cotan(h) + self.cotan(h.twin));
             n.decrementBy(self.vector(h).times(weight));
   
-        n.normalize();
+        n = n.normalized();
         return n;
 # 
 #   /**
@@ -479,7 +477,7 @@ class Geometry:
    
             n.incrementBy(u.cross_product(v).over(u.norm2() * v.norm2()));
 
-        n.normalize();
+        n = n.normalized();
         return n;
 # 
 #   /**
@@ -2009,19 +2007,30 @@ class HeatMethod:
         for f in self.geometry.mesh.faces:
             normal = self.geometry.faceNormal(f);
             area = self.geometry.area(f);
-            gradU = Vector();
+            # TODO: think about correct length of gradU.
+            # should be 3 because we're in 3D? the length of `u` is the
+            # number of vertices? I'm not even sure anymore.
+            # TODO: does this get initialized to the correct ring?
+            #       does it always work because Z is initial?
+            gradU = zero_vector(3);
    
             for h in f.adjacentHalfedges():
                 i = self.vertexIndex[h.prev.vertex];
-                ui = u.get(i, 0);
+                # ui = u.get(i, 0);
+                ui = u[i]
                 ei = self.geometry.vector(h);
    
-                gradU.incrementBy(normal.cross_product(ei).times(ui));
+                # gradU += normal.cross_product(ei).times(ui)
+                gradU += normal.cross_product(ei) * ui
    
-            gradU.divideBy(2 * area);
-            gradU.normalize();
+            # gradU.divideBy(2 * area);
+            gradU /= (2 * area);
+            # TODO: check mutable?
+            gradU = gradU.normalized();
    
-            X[f] = gradU.negated();
+            # TODO: also check if getting hands on ring's -1 is correctly
+            # done through the literal "-1". 
+            X[f] = -1 * gradU;
    
         return X;
 # 
@@ -2074,9 +2083,16 @@ class HeatMethod:
 #    * @returns {module:LinearAlgebra.DenseMatrix}
 #    */
     def compute(self, delta):
+        # TODO: how do I actually poke through SAGE class hierarchy
+        # and check that this is a vector?
+        delta = vector(delta)
         # integrate heat flow
         llt = self.F.cholesky();
-        u = llt.solvePositiveDefinite(delta);
+        # how to tell sage that llt is PD vv ?
+        print("llt: (%s, %s)" % (llt.nrows(), llt.ncols()))
+        print("delta: %s" % (len(delta)))
+        u = llt.solve_right(delta)
+        # u = llt.solvePositiveDefinite(delta);
   
         # compute unit vector field X and divergence ∇.X
         X = self.computeVectorField(u);
@@ -2084,7 +2100,8 @@ class HeatMethod:
   
         # solve poisson equation Δφ = ∇.X
         llt = self.A.cholesky();
-        phi = llt.solvePositiveDefinite(div.negated());
+        phi = llt.solve_right(-1 * div)
+        # phi = llt.solvePositiveDefinite(div.negated());
   
         # since φ is unique up to an additive constant, it should
         # be shifted such that the smallest distance is zero
