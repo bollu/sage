@@ -335,6 +335,10 @@ def get_matrix_class(R, nrows, ncols, sparse, implementation):
     if sage.rings.integer_ring.is_IntegerRing(R):
         return matrix_integer_sparse.Matrix_integer_sparse
 
+    if R is sage.rings.real_double.RDF:
+        from . import matrix_real_double_sparse
+        return matrix_real_double_sparse.Matrix_real_double_sparse
+
     # the fallback
     return matrix_generic_sparse.Matrix_generic_sparse
 
